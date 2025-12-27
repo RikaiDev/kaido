@@ -112,9 +112,10 @@ SOLUTION  → Found syntax error on line 42
 
 ### Privacy-First
 
-- Local LLM support (GGUF models)
+- **Ollama integration** for local LLM inference
+- Supports llama3.2, mistral, qwen2.5, and more
 - All data stays on your machine
-- Cloud AI optional (Gemini/OpenAI)
+- Cloud AI optional (Gemini API)
 
 ## Supported Tools
 
@@ -128,15 +129,33 @@ SOLUTION  → Found syntax error on line 42
 
 ## Configuration
 
-```bash
-# Set your API key (for cloud AI)
-export GEMINI_API_KEY="your_key_here"
+Run the interactive setup wizard:
 
-# Or use local models only
-kaido init --local-only
+```bash
+kaido init
 ```
 
-Config file: `~/.config/kaido/config.toml`
+This teaches you about Cloud vs Local AI while configuring:
+
+**Option 1: Gemini API (Cloud)**
+```bash
+# Fast, powerful, requires internet
+export GEMINI_API_KEY="your_key_here"
+```
+
+**Option 2: Ollama (Local)**
+```bash
+# Private, offline-capable
+brew install ollama        # or curl -fsSL https://ollama.ai/install.sh | sh
+ollama serve               # start the server
+ollama pull llama3.2       # download a model
+```
+
+**Option 3: Both (Recommended)**
+- Gemini for speed, Ollama as private fallback
+- `kaido init` auto-detects and configures both
+
+Config file: `~/.kaido/config.toml`
 
 ## Learning Path (Coming Soon)
 
@@ -184,10 +203,10 @@ See our [GitHub Issues](https://github.com/RikaiDev/kaido/issues) for planned fe
 - [x] ReAct reasoning loop
 - [x] Multi-tool support
 - [x] Risk classification
-- [ ] Explain mode ([#5](https://github.com/RikaiDev/kaido/issues/5))
+- [x] Explain mode ([#5](https://github.com/RikaiDev/kaido/issues/5))
+- [x] Ollama local LLM ([#11](https://github.com/RikaiDev/kaido/issues/11))
 - [ ] Terminal 101 tutorial ([#6](https://github.com/RikaiDev/kaido/issues/6))
 - [ ] MCP server integration ([#7](https://github.com/RikaiDev/kaido/issues/7))
-- [ ] Ollama local LLM ([#8](https://github.com/RikaiDev/kaido/issues/8))
 - [ ] Learning path system ([#9](https://github.com/RikaiDev/kaido/issues/9))
 
 ## License

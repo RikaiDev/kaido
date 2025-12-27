@@ -12,7 +12,15 @@ cargo build --release
 
 ### 2. Configure
 
-**Option A: Cloud AI (Recommended for beginners)**
+Run the interactive setup wizard:
+
+```bash
+kaido init
+```
+
+The wizard teaches you about AI options while configuring:
+
+**Option A: Gemini API (Cloud - Fast)**
 
 ```bash
 export GEMINI_API_KEY="your_gemini_api_key_here"
@@ -20,11 +28,25 @@ export GEMINI_API_KEY="your_gemini_api_key_here"
 
 Get your free API key: <https://aistudio.google.com/app/apikey>
 
-**Option B: Local AI (Privacy-first)**
+**Option B: Ollama (Local - Private)**
 
 ```bash
-kaido init --local-only
+# Install Ollama
+brew install ollama                    # macOS
+# or: curl -fsSL https://ollama.ai/install.sh | sh  # Linux
+
+# Start and download a model
+ollama serve
+ollama pull llama3.2      # 2GB, fast
+ollama pull mistral       # 4GB, balanced
+ollama pull qwen2.5       # 4GB, multilingual
 ```
+
+**Option C: Both (Recommended)**
+
+Configure both for flexibility:
+- Gemini for speed (1-2s response)
+- Ollama as private fallback (5-30s, depends on hardware)
 
 ### 3. Launch
 
@@ -280,25 +302,39 @@ Use this to:
 
 ## Configuration
 
-Config file: `~/.config/kaido/config.toml`
+Config file: `~/.kaido/config.toml`
 
 ```toml
-# AI Provider
-gemini_api_key = "your_key"
-gemini_model = "gemini-1.5-flash-latest"
+# AI Provider: "auto", "gemini", or "ollama"
+provider = "auto"
+
+# Ollama (Local LLM)
+[ollama]
+base_url = "http://localhost:11434"
+model = "llama3.2"               # or mistral, qwen2.5, etc.
+timeout_seconds = 120
 
 # Learning Settings
+[display]
 explain_mode = true              # Show command explanations
-show_concepts = true             # Highlight learning points
+show_reasoning = false           # Show detailed AI reasoning
 
 # Safety
+[safety]
 confirm_destructive = true       # Require confirmation for risky commands
-max_iterations = 20              # Maximum diagnostic steps
 
 # Audit
-audit_enabled = true
-audit_retention_days = 90
+[audit]
+retention_days = 90
 ```
+
+### Provider Modes
+
+| Mode | Behavior |
+|------|----------|
+| `auto` | Try Gemini first, fall back to Ollama |
+| `gemini` | Use Gemini API only |
+| `ollama` | Use Ollama only (fully offline) |
 
 ## Supported Tools
 
@@ -316,7 +352,34 @@ audit_retention_days = 90
 ### "API key not found"
 
 ```bash
+# Option 1: Environment variable
 export GEMINI_API_KEY="your_key_here"
+
+# Option 2: .env file in your project
+echo "GEMINI_API_KEY=your_key" > .env
+
+# Option 3: Use Ollama instead (no API key needed)
+kaido init  # choose option 2
+```
+
+### "Cannot connect to Ollama"
+
+```bash
+# Make sure Ollama is running
+ollama serve
+
+# Check if it's accessible
+curl http://localhost:11434/api/tags
+```
+
+### "Model not found"
+
+```bash
+# Download the model first
+ollama pull llama3.2
+
+# List available models
+ollama list
 ```
 
 ### "Permission denied"
@@ -343,8 +406,9 @@ brew install nginx docker
 
 - All session data stored locally in `~/.kaido/`
 - No telemetry or usage tracking
-- API calls only send your problem description
-- Local LLM option for fully offline use
+- **Ollama mode**: Fully offline, nothing leaves your machine
+- **Gemini mode**: Only problem descriptions sent to API
+- Use `provider = "ollama"` for maximum privacy
 
 ## Next Steps
 
