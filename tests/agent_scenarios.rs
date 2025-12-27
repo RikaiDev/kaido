@@ -84,6 +84,7 @@ async fn test_docker_compose_network_scenario() {
 }
 
 #[tokio::test]
+#[ignore] // Requires running AI backend (Ollama or Gemini)
 async fn test_agent_iteration_limit() {
     // Test that agent stops after max iterations
     let config = Config::default();

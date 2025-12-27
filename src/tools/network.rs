@@ -227,17 +227,18 @@ impl Tool for NetworkTool {
         }
         
         // Firewall rule modifications (high risk)
-        if cmd_lower.contains("iptables -A")
-            || cmd_lower.contains("iptables -D")
-            || cmd_lower.contains("iptables -I")
+        // Note: iptables flags are case-sensitive (-A, -D, -I, -F)
+        if command.contains("iptables -A")
+            || command.contains("iptables -D")
+            || command.contains("iptables -I")
             || cmd_lower.contains("ufw allow")
             || cmd_lower.contains("ufw deny")
         {
             return RiskLevel::High;
         }
-        
+
         // Dangerous firewall operations (critical)
-        if cmd_lower.contains("iptables -F")
+        if command.contains("iptables -F")
             || cmd_lower.contains("iptables --flush")
             || cmd_lower.contains("ufw disable")
             || cmd_lower.contains("ufw reset")
