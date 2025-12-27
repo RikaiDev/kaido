@@ -14,7 +14,7 @@ use super::builtins::{execute_builtin, parse_builtin, Builtin, BuiltinResult, Sh
 use super::history::{ensure_history_dir, HistoryConfig};
 use super::prompt::PromptBuilder;
 use super::pty::{PtyExecutionResult, PtyExecutor};
-use crate::learning::LearningTracker;
+use crate::learning::{LearningTracker, SkillDetector, VerbosityMode};
 use crate::mentor::{ErrorDetector, ErrorInfo, MentorDisplay, Verbosity};
 
 /// Kaido shell configuration
@@ -30,6 +30,8 @@ pub struct ShellConfig {
     pub shell: Option<String>,
     /// Mentor display verbosity level
     pub mentor_verbosity: Verbosity,
+    /// Verbosity mode (auto or fixed)
+    pub verbosity_mode: VerbosityMode,
 }
 
 impl Default for ShellConfig {
@@ -40,6 +42,7 @@ impl Default for ShellConfig {
             show_git_branch: true,
             shell: None,
             mentor_verbosity: Verbosity::Normal,
+            verbosity_mode: VerbosityMode::Auto,
         }
     }
 }
@@ -73,6 +76,8 @@ pub struct KaidoShell {
     mentor_display: MentorDisplay,
     /// Learning tracker for progress
     learning_tracker: Option<LearningTracker>,
+    /// Skill detector for adaptive verbosity
+    skill_detector: SkillDetector,
     /// Whether the shell is running
     running: bool,
     /// Last execution result (for mentor system)
@@ -155,6 +160,7 @@ impl KaidoShell {
             error_detector: ErrorDetector::new(),
             mentor_display,
             learning_tracker,
+            skill_detector: SkillDetector::new(),
             running: false,
             last_result: None,
             last_error: None,
@@ -257,16 +263,19 @@ impl KaidoShell {
         // First check mentor-specific commands (not in builtins module)
         match line {
             "verbose" | "mentor verbose" => {
+                self.config.verbosity_mode = VerbosityMode::Fixed(Verbosity::Verbose);
                 self.set_verbosity(Verbosity::Verbose);
                 println!("\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1mVerbose\x1b[0m (full explanations)");
                 return true;
             }
             "normal" | "mentor normal" => {
+                self.config.verbosity_mode = VerbosityMode::Fixed(Verbosity::Normal);
                 self.set_verbosity(Verbosity::Normal);
                 println!("\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1mNormal\x1b[0m (key points)");
                 return true;
             }
             "compact" | "mentor compact" => {
+                self.config.verbosity_mode = VerbosityMode::Fixed(Verbosity::Compact);
                 self.set_verbosity(Verbosity::Compact);
                 println!("\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1mCompact\x1b[0m (one-liner)");
                 return true;
@@ -283,6 +292,16 @@ impl KaidoShell {
             }
             "progress" | "/progress" => {
                 self.display_progress();
+                return true;
+            }
+            "skill" | "/skill" => {
+                self.display_skill_assessment();
+                return true;
+            }
+            "mentor auto" => {
+                self.config.verbosity_mode = VerbosityMode::Auto;
+                println!("\x1b[36m◆\x1b[0m Mentor mode: \x1b[1mAuto\x1b[0m (adapts to your skill level)");
+                self.update_auto_verbosity();
                 return true;
             }
             _ => {}
@@ -381,6 +400,7 @@ impl KaidoShell {
         println!("\x1b[1;36mMentor Verbosity\x1b[0m");
         println!();
         println!("  \x1b[1mmentor\x1b[0m            Show current verbosity level");
+        println!("  \x1b[1mmentor auto\x1b[0m       Adapt to your skill level");
         println!("  \x1b[1mverbose\x1b[0m           Full explanations with next steps");
         println!("  \x1b[1mnormal\x1b[0m            Key points only (default)");
         println!("  \x1b[1mcompact\x1b[0m           One-liner for experts");
@@ -388,6 +408,7 @@ impl KaidoShell {
         println!("\x1b[1;36mLearning Progress\x1b[0m");
         println!();
         println!("  \x1b[1mprogress\x1b[0m          Show your learning progress");
+        println!("  \x1b[1mskill\x1b[0m             Show your skill assessment");
         println!();
         println!("\x1b[2mAll other commands are executed in the system shell.\x1b[0m");
         println!("\x1b[2mWhen errors occur, I'll help you understand them.\x1b[0m");
@@ -460,6 +481,86 @@ impl KaidoShell {
 
         println!("\x1b[1;36m└───────────────────────────────────────────────────────────────┘\x1b[0m");
         println!();
+    }
+
+    /// Display skill assessment
+    fn display_skill_assessment(&self) {
+        println!();
+
+        let progress = match &self.learning_tracker {
+            Some(tracker) => match tracker.get_progress() {
+                Ok(p) => p,
+                Err(_) => {
+                    println!("\x1b[33mUnable to load learning progress.\x1b[0m");
+                    println!();
+                    return;
+                }
+            },
+            None => {
+                println!("\x1b[33mLearning tracker not available.\x1b[0m");
+                println!();
+                return;
+            }
+        };
+
+        let assessment = self.skill_detector.assess(&progress);
+
+        println!("\x1b[1;36m┌─ Skill Assessment ───────────────────────────────────────────┐\x1b[0m");
+        println!("\x1b[36m│\x1b[0m                                                               \x1b[36m│\x1b[0m");
+        println!(
+            "\x1b[36m│\x1b[0m  Level: \x1b[1m{:<20}\x1b[0m                            \x1b[36m│\x1b[0m",
+            assessment.level.description()
+        );
+        println!(
+            "\x1b[36m│\x1b[0m  Confidence: \x1b[1m{}%\x1b[0m                                            \x1b[36m│\x1b[0m",
+            (assessment.confidence * 100.0) as u32
+        );
+        println!(
+            "\x1b[36m│\x1b[0m  Score: \x1b[1m{:.2}\x1b[0m                                               \x1b[36m│\x1b[0m",
+            assessment.score
+        );
+        println!("\x1b[36m│\x1b[0m                                                               \x1b[36m│\x1b[0m");
+
+        if !assessment.indicators.is_empty() {
+            println!("\x1b[36m│\x1b[0m  \x1b[1mIndicators:\x1b[0m                                                 \x1b[36m│\x1b[0m");
+            for indicator in &assessment.indicators {
+                let bar_len = (indicator.value * 10.0) as usize;
+                let bar = "█".repeat(bar_len) + &"░".repeat(10 - bar_len);
+                println!(
+                    "\x1b[36m│\x1b[0m    {:<20} {} ({:.0}%)               \x1b[36m│\x1b[0m",
+                    indicator.name,
+                    bar,
+                    indicator.value * 100.0
+                );
+            }
+            println!("\x1b[36m│\x1b[0m                                                               \x1b[36m│\x1b[0m");
+        }
+
+        let recommended = assessment.level.recommended_verbosity();
+        let mode_str = match self.config.verbosity_mode {
+            VerbosityMode::Auto => format!("Auto ({:?})", recommended),
+            VerbosityMode::Fixed(v) => format!("Fixed ({:?})", v),
+        };
+        println!(
+            "\x1b[36m│\x1b[0m  Verbosity mode: \x1b[1m{}\x1b[0m                             \x1b[36m│\x1b[0m",
+            mode_str
+        );
+        println!("\x1b[36m│\x1b[0m                                                               \x1b[36m│\x1b[0m");
+        println!("\x1b[1;36m└───────────────────────────────────────────────────────────────┘\x1b[0m");
+        println!();
+    }
+
+    /// Update verbosity based on auto mode and skill level
+    fn update_auto_verbosity(&mut self) {
+        if let VerbosityMode::Auto = self.config.verbosity_mode {
+            if let Some(ref tracker) = self.learning_tracker {
+                if let Ok(progress) = tracker.get_progress() {
+                    let assessment = self.skill_detector.assess(&progress);
+                    let verbosity = assessment.level.recommended_verbosity();
+                    self.set_verbosity(verbosity);
+                }
+            }
+        }
     }
 
     /// Execute a command via PTY
