@@ -50,6 +50,9 @@ users = "0.11"
 ratatui = "0.27"
 regex = "1.10"
 
+# PTY for shell wrapper
+pty-process = { version = "0.5", features = ["async"] }
+
 # Memory and storage
 rusqlite = { version = "0.31", features = ["bundled"] }
 
