@@ -1,73 +1,72 @@
-# Kaido AI - Usage Guide
+# Kaido - Usage Guide
 
-## Quick Start
+Your AI Ops Coach. Learn infrastructure through hands-on diagnosis.
+
+## Getting Started
 
 ### 1. Build
 
 ```bash
-cd /Users/gloomcheng/Workspace/RikaiDev/kaido-ai
 cargo build --release
 ```
 
-### 2. Configure API Key (Required)
+### 2. Configure
 
-Kaido AI requires a Gemini API key for agent reasoning:
+**Option A: Cloud AI (Recommended for beginners)**
 
 ```bash
 export GEMINI_API_KEY="your_gemini_api_key_here"
 ```
 
-Or edit `~/.config/kaido/config.toml`:
+Get your free API key: <https://aistudio.google.com/app/apikey>
 
-```toml
-gemini_api_key = "your_api_key_here"
+**Option B: Local AI (Privacy-first)**
+
+```bash
+kaido init --local-only
 ```
 
-Get your API key: <https://aistudio.google.com/app/apikey>
-
-### 3. Run
+### 3. Launch
 
 ```bash
 ./target/release/kaido
 ```
 
-Or with cargo:
+## Your First Session
 
-```bash
-cargo run --release
+Just describe what's wrong in plain language:
+
+```
+> nginx won't start, says port 80 already in use
 ```
 
-## Usage
+Kaido will guide you through the diagnosis, explaining each step.
 
-### Describe Your Problem
+## How Kaido Teaches
 
-Simply describe your ops problem in natural language:
+### The ReAct Learning Loop
 
-```text
-→ nginx won't start, says port 80 already in use
+Every diagnosis follows this pattern — watch and learn:
+
+```
+THOUGHT     What should I investigate?
+    ↓
+ACTION      Execute a diagnostic command
+    ↓
+OBSERVATION What did we find?
+    ↓
+REFLECTION  What does this mean? What's next?
+    ↓
+(repeat until solved)
+    ↓
+SOLUTION    Root cause + how to fix it
 ```
 
-```text
-→ apache returns 404 for /webhook endpoint, backend running on 8080
+### Example: Learning to Debug Port Conflicts
+
 ```
+You: nginx won't start, says address already in use
 
-```text
-→ docker-compose services cannot connect to each other
-```
-
-### Agent Autonomous Diagnosis
-
-The agent will autonomously execute diagnostic steps using the ReAct pattern:
-
-**Thought** → Decides what to investigate  
-**Action** → Executes diagnostic command  
-**Observation** → Analyzes the output  
-**Reflection** → Evaluates progress and determines next step  
-**Solution** → Provides root cause and remediation plan
-
-### Example Output
-
-```text
 ╭─ THOUGHT #1
 │ Need to identify what process is using port 80
 ╰─────────────────────────────────────────
@@ -75,7 +74,21 @@ The agent will autonomously execute diagnostic steps using the ReAct pattern:
 ╭─ ACTION #1
 │ [network] lsof -i :80 -P -n
 ╰─────────────────────────────────────────
-⟳ executing...
+
+┌─ WHAT YOU'RE LEARNING ──────────────────────────────────┐
+│                                                          │
+│ lsof = "list open files"                                │
+│                                                          │
+│ In Unix, everything is a file — including network       │
+│ connections. So lsof can find which process is using    │
+│ a specific port.                                        │
+│                                                          │
+│ -i :80  → filter by port 80                             │
+│ -P      → show port numbers (not service names)         │
+│ -n      → skip DNS lookup (faster)                      │
+│                                                          │
+│ This is a fundamental debugging skill for any SRE.      │
+└──────────────────────────────────────────────────────────┘
 
 ╭─ OBSERVATION #1
 │ apache2  1234 root  4u  IPv6  TCP *:80 (LISTEN)
@@ -93,7 +106,16 @@ The agent will autonomously execute diagnostic steps using the ReAct pattern:
 ╭─ ACTION #2
 │ [nginx] nginx -t
 ╰─────────────────────────────────────────
-⟳ executing... ✓
+
+┌─ WHAT YOU'RE LEARNING ──────────────────────────────────┐
+│                                                          │
+│ nginx -t = "test configuration"                         │
+│                                                          │
+│ Always validate config before restarting a service.     │
+│ A syntax error in nginx.conf will prevent startup.      │
+│                                                          │
+│ Pro tip: Run this BEFORE every nginx restart.           │
+└──────────────────────────────────────────────────────────┘
 
 ╭─ OBSERVATION #2
 │ nginx: configuration file syntax is ok
@@ -101,206 +123,238 @@ The agent will autonomously execute diagnostic steps using the ReAct pattern:
 ╰─────────────────────────────────────────
 
 ╭─ SOLUTION
-│ ▸ Root Cause: Port conflict between nginx and apache2
-│ ▸ Resolution Options:
+│
+│ ROOT CAUSE: Port conflict between nginx and apache2
+│
+│ OPTIONS:
 │   1. Stop apache2: systemctl stop apache2
 │   2. Reconfigure nginx to use port 8080
 │   3. Set up reverse proxy configuration
+│
+│ CONCEPT LEARNED: Two services cannot bind to the same port.
+│ SKILL ACQUIRED: Using lsof to find port usage.
 ╰─────────────────────────────────────────
 
 Session completed in 3.2s (6 steps, 2 actions)
 ```
 
-## Example Scenarios
+## Learning Scenarios
 
-### 1. Nginx Port Conflict
+Each scenario teaches specific Ops concepts:
 
-```text
-→ nginx won't start, says address already in use
+### 1. Port Conflicts
+
+```
+> nginx won't start, says address already in use
 ```
 
-Agent will:
+**What You'll Learn:**
+- How to find processes using specific ports (`lsof`, `netstat`)
+- How services bind to network ports
+- Configuration validation before restart
 
-- Check port 80/443 usage (`lsof`, `netstat`)
-- Validate nginx configuration (`nginx -t`)
-- Identify conflicting service
-- Provide resolution steps
-
-### 2. Apache 404 Issue
-
-```text
-→ apache returns 404 for /webhook endpoint
+**Key Commands:**
+```bash
+lsof -i :80 -P -n      # Find what's using port 80
+nginx -t               # Validate nginx config
+systemctl status nginx # Check service status
 ```
 
-Agent will:
+### 2. Reverse Proxy Issues
 
-- Check VirtualHost configuration (`apache2ctl -S`)
-- Verify backend service status
-- Analyze ProxyPass setup
-- Suggest configuration fixes
-
-### 3. Docker Network Problem
-
-```text
-→ docker-compose services cannot connect to each other
+```
+> apache returns 404 for /webhook endpoint, backend on 8080
 ```
 
-Agent will:
+**What You'll Learn:**
+- How reverse proxies work
+- VirtualHost configuration
+- ProxyPass directives
 
-- Check container status (`docker-compose ps`)
-- Inspect network configuration (`docker network inspect`)
-- Analyze docker-compose.yml
-- Diagnose DNS or network issues
-
-### 4. Kubernetes Pod Issues
-
-```text
-→ pod keeps restarting in production namespace
+**Key Commands:**
+```bash
+apache2ctl -S          # List virtual hosts
+curl localhost:8080    # Test backend directly
+tail -f /var/log/apache2/error.log
 ```
 
-Agent will:
+### 3. Container Networking
 
-- Check pod status (`kubectl get pods`)
-- View pod logs (`kubectl logs`)
-- Examine resource limits
-- Analyze error patterns
+```
+> docker-compose services cannot connect to each other
+```
+
+**What You'll Learn:**
+- Docker network isolation
+- Service discovery via DNS
+- Container-to-container communication
+
+**Key Commands:**
+```bash
+docker network ls                    # List networks
+docker network inspect <network>     # See connected containers
+docker-compose exec app ping db      # Test connectivity
+```
+
+### 4. Kubernetes Debugging
+
+```
+> pod keeps restarting in production namespace
+```
+
+**What You'll Learn:**
+- Pod lifecycle and restart policies
+- Reading container logs
+- Resource limits and OOMKilled
+
+**Key Commands:**
+```bash
+kubectl get pods -n production           # List pods
+kubectl describe pod <name>              # Detailed status
+kubectl logs <pod> --previous            # Logs from crashed container
+```
+
+## Skill Progression
+
+As you use Kaido, you'll naturally progress:
+
+```
+Level 1: Observer
+├── Watch Kaido diagnose problems
+├── Learn command patterns
+└── Understand the reasoning process
+
+Level 2: Assistant
+├── Predict what command comes next
+├── Understand why each step matters
+└── Start recognizing common patterns
+
+Level 3: Independent
+├── Diagnose similar problems yourself
+├── Know which tools to reach for
+└── Build your own mental models
+
+Level 4: Expert
+├── Handle novel situations
+├── Combine multiple diagnostic techniques
+└── Teach others what you've learned
+```
 
 ## Commands
 
-- `help` - Show help information
-- `clear` - Clear screen
-- `exit` / `quit` / `q` - Exit agent
+| Command | Description |
+|---------|-------------|
+| `help` | Show available commands |
+| `clear` | Clear screen |
+| `history` | View recent sessions |
+| `exit` | Exit Kaido |
 
-## Audit Trail
+## Understanding Risk Levels
 
-All agent executions are logged to:
+Kaido classifies every command by risk:
 
-```text
-~/.kaido/agent_audit.db
-```
+| Level | Description | Example | Confirmation |
+|-------|-------------|---------|--------------|
+| **Low** | Read-only, safe | `kubectl get pods` | None |
+| **Medium** | Modifies state | `systemctl restart nginx` | Simple Y/n |
+| **High** | Deletes resources | `kubectl delete pod` | Explicit yes |
+| **Critical** | Batch destructive | `kubectl delete pods --all` | Type full command |
 
-Contains:
+This teaches you to think about command impact before execution.
 
-- Complete diagnostic session records
-- Step-by-step execution details
-- Root cause and solution data
-- Execution duration statistics
-- 90-day retention policy
+## Session History & Review
 
-## Testing
-
-Run test suite:
-
-```bash
-# Unit and integration tests
-cargo test
-
-# Scenario tests (requires actual system tools)
-cargo test --test agent_scenarios -- --ignored
-```
-
-## Requirements
-
-1. **Gemini API Key** - For agent reasoning
-2. **System Permissions** - Some diagnostic commands may require sudo
-3. **Network Connection** - API calls require internet
-4. **System Tools** - nginx, apache2, docker, etc. should be installed
-
-## Troubleshooting
-
-### API Key Error
-
-```text
-[WARN] Gemini API key not found
-```
-
-**Solution:** Set `GEMINI_API_KEY` environment variable
-
-### Tool Not Found
-
-Agent will automatically fallback to shell execution
-
-### Audit Database Error
-
-Check `~/.kaido/` directory permissions
-
-## Advanced Usage
-
-### Query Audit History
+Every session is logged for your review:
 
 ```bash
+# View recent sessions
 sqlite3 ~/.kaido/agent_audit.db \
-  "SELECT * FROM agent_sessions ORDER BY start_time DESC LIMIT 10"
+  "SELECT datetime(start_time, 'unixepoch'), problem_description
+   FROM agent_sessions ORDER BY start_time DESC LIMIT 10"
 ```
 
-### Manual Cleanup
-
-Automatic 90-day retention. Manual cleanup:
-
-```bash
-sqlite3 ~/.kaido/agent_audit.db \
-  "DELETE FROM agent_sessions WHERE start_time < strftime('%s', 'now', '-30 days')"
-```
-
-## Performance
-
-- First execution may be slower (model initialization)
-- Subsequent executions are faster
-- Complex problems may require 10-20 steps
-- Average diagnosis time: 2-5 seconds
-
-## Supported Tools
-
-| Tool | Capabilities |
-|------|-------------|
-| **nginx** | Config validation, status check, port diagnosis, log analysis |
-| **apache2** | Config test, module check, VirtualHost listing |
-| **docker** | Container management, compose analysis, network diagnosis |
-| **network** | Port scanning, firewall check, connection testing |
-| **kubectl** | Pod management, log queries, resource inspection |
-| **sql** | Database queries, connection diagnosis |
-
-## Architecture
-
-Kaido AI uses a **ReAct (Reasoning + Acting)** pattern:
-
-```text
-Observation → Thought → Action → Reflection → (repeat until solved)
-```
-
-The agent:
-
-1. Maintains state across multiple reasoning steps
-2. Executes tools through a unified registry
-3. Self-reflects on progress after each action
-4. Terminates when solution is found or max iterations reached
+Use this to:
+- Review what you learned
+- See patterns in problems you encounter
+- Track your progress over time
 
 ## Configuration
 
-Default config location: `~/.config/kaido/config.toml`
+Config file: `~/.config/kaido/config.toml`
 
 ```toml
-# Gemini API configuration
+# AI Provider
 gemini_api_key = "your_key"
 gemini_model = "gemini-1.5-flash-latest"
 
-# Agent behavior
-max_iterations = 20
-max_execution_time_seconds = 300
+# Learning Settings
+explain_mode = true              # Show command explanations
+show_concepts = true             # Highlight learning points
 
-# Audit settings
+# Safety
+confirm_destructive = true       # Require confirmation for risky commands
+max_iterations = 20              # Maximum diagnostic steps
+
+# Audit
 audit_enabled = true
 audit_retention_days = 90
 ```
 
-## Contributing
+## Supported Tools
 
-See `CONTRIBUTING.md` for guidelines.
+| Domain | Tools | Concepts You'll Learn |
+|--------|-------|----------------------|
+| **Web Servers** | nginx, apache2 | Config syntax, virtual hosts, reverse proxy |
+| **Containers** | docker, compose | Images, networking, volumes, orchestration |
+| **Kubernetes** | kubectl | Pods, services, deployments, debugging |
+| **Network** | lsof, netstat, iptables | Ports, connections, firewalls |
+| **Databases** | mysql, psql | Queries, connections, permissions |
+| **System** | systemctl, journalctl | Services, logs, boot process |
 
-## License
+## Troubleshooting
 
-MIT License - Copyright (c) 2025 RikaiDev
+### "API key not found"
+
+```bash
+export GEMINI_API_KEY="your_key_here"
+```
+
+### "Permission denied"
+
+Some diagnostic commands need elevated privileges:
+
+```bash
+sudo kaido
+```
+
+### "Tool not found"
+
+Kaido works best when the tools are installed:
+
+```bash
+# Debian/Ubuntu
+sudo apt install nginx docker.io
+
+# macOS
+brew install nginx docker
+```
+
+## Privacy & Data
+
+- All session data stored locally in `~/.kaido/`
+- No telemetry or usage tracking
+- API calls only send your problem description
+- Local LLM option for fully offline use
+
+## Next Steps
+
+1. **Practice**: Try diagnosing real problems on your system
+2. **Review**: Look at session history to reinforce learning
+3. **Experiment**: Try the commands manually after Kaido shows you
+4. **Teach**: Explain what you learned to solidify understanding
 
 ---
 
-**Ready to diagnose? Start Kaido AI!** 🚀
+**Remember**: The goal isn't to depend on Kaido forever. It's to learn enough that you don't need it anymore.
+
+That's when you know you've become an Ops expert.
