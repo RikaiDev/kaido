@@ -8,6 +8,7 @@ use rustyline::error::ReadlineError;
 use rustyline::history::FileHistory;
 use rustyline::{Config, Editor};
 
+use super::builtins::{execute_builtin, parse_builtin, Builtin, BuiltinResult, ShellEnvironment};
 use super::history::{ensure_history_dir, HistoryConfig};
 use super::prompt::PromptBuilder;
 use super::pty::{PtyExecutionResult, PtyExecutor};
@@ -50,6 +51,8 @@ pub struct KaidoShell {
     editor: Editor<(), FileHistory>,
     /// Prompt builder
     prompt_builder: PromptBuilder,
+    /// Shell environment (variables, aliases, previous dir)
+    shell_env: ShellEnvironment,
     /// Error detector for mentor system
     error_detector: ErrorDetector,
     /// Mentor display for formatting guidance
@@ -121,6 +124,7 @@ impl KaidoShell {
             pty,
             editor,
             prompt_builder,
+            shell_env: ShellEnvironment::new(),
             error_detector: ErrorDetector::new(),
             mentor_display,
             running: false,
@@ -177,8 +181,12 @@ impl KaidoShell {
                         continue;
                     }
 
+                    // Try to expand aliases
+                    let expanded = self.shell_env.expand_aliases(line);
+                    let command = expanded.as_deref().unwrap_or(line);
+
                     // Execute the command
-                    self.execute_command(line).await?;
+                    self.execute_command(command).await?;
                 }
                 Err(ReadlineError::Interrupted) => {
                     // Ctrl+C - just show a new prompt
@@ -206,39 +214,22 @@ impl KaidoShell {
     /// Handle built-in shell commands
     /// Returns true if the command was handled
     fn handle_builtin(&mut self, line: &str) -> bool {
+        // First check mentor-specific commands (not in builtins module)
         match line {
-            "exit" | "quit" => {
-                println!("Goodbye! Keep learning!");
-                self.running = false;
-                true
-            }
-            "clear" => {
-                print!("\x1b[2J\x1b[1;1H");
-                true
-            }
-            "help" => {
-                self.display_help();
-                true
-            }
-            "history" => {
-                self.display_history();
-                true
-            }
-            // Verbosity commands
             "verbose" | "mentor verbose" => {
                 self.set_verbosity(Verbosity::Verbose);
                 println!("\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1mVerbose\x1b[0m (full explanations)");
-                true
+                return true;
             }
             "normal" | "mentor normal" => {
                 self.set_verbosity(Verbosity::Normal);
                 println!("\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1mNormal\x1b[0m (key points)");
-                true
+                return true;
             }
             "compact" | "mentor compact" => {
                 self.set_verbosity(Verbosity::Compact);
                 println!("\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1mCompact\x1b[0m (one-liner)");
-                true
+                return true;
             }
             "mentor" => {
                 let level = match self.config.mentor_verbosity {
@@ -248,18 +239,61 @@ impl KaidoShell {
                 };
                 println!("\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1m{}\x1b[0m", level);
                 println!("  Use 'verbose', 'normal', or 'compact' to change.");
-                true
+                return true;
             }
-            _ if line.starts_with("cd ") => {
-                self.handle_cd(&line[3..]);
-                true
-            }
-            "cd" => {
-                self.handle_cd("~");
-                true
-            }
-            _ => false,
+            _ => {}
         }
+
+        // Try to parse as a builtin
+        if let Some(builtin) = parse_builtin(line) {
+            match &builtin {
+                Builtin::Help => {
+                    self.display_help();
+                    return true;
+                }
+                Builtin::History => {
+                    self.display_history();
+                    return true;
+                }
+                Builtin::Clear => {
+                    print!("\x1b[2J\x1b[1;1H");
+                    return true;
+                }
+                _ => {}
+            }
+
+            // Execute the builtin
+            match execute_builtin(&builtin, &mut self.shell_env) {
+                BuiltinResult::Ok(None) => {}
+                BuiltinResult::Ok(Some(msg)) => {
+                    println!("{}", msg);
+                }
+                BuiltinResult::Error(msg) => {
+                    println!("\x1b[31m{}\x1b[0m", msg);
+                }
+                BuiltinResult::Exit(code) => {
+                    if code == 0 {
+                        println!("Goodbye! Keep learning!");
+                    }
+                    self.running = false;
+                }
+                BuiltinResult::Source(commands) => {
+                    // Execute each command from the sourced file
+                    // Note: This is synchronous; for async we'd need different handling
+                    println!("\x1b[2mSourcing {} commands...\x1b[0m", commands.len());
+                    for cmd in commands {
+                        if !self.handle_builtin(&cmd) {
+                            // Non-builtin commands from source would need async execution
+                            // For now, just handle builtins from sourced files
+                            println!("\x1b[33mSkipping external command: {}\x1b[0m", cmd);
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        false
     }
 
     /// Set mentor verbosity level
@@ -278,18 +312,34 @@ impl KaidoShell {
         println!();
         println!("\x1b[1;36mKaido Shell - Built-in Commands\x1b[0m");
         println!();
-        println!("  \x1b[1mhelp\x1b[0m       Show this help message");
-        println!("  \x1b[1mhistory\x1b[0m    Show command history");
-        println!("  \x1b[1mcd <dir>\x1b[0m   Change directory");
-        println!("  \x1b[1mclear\x1b[0m      Clear the screen");
-        println!("  \x1b[1mexit\x1b[0m       Exit the shell");
+        println!("  \x1b[1mhelp\x1b[0m              Show this help message");
+        println!("  \x1b[1mhistory\x1b[0m           Show command history");
+        println!("  \x1b[1mclear\x1b[0m             Clear the screen");
+        println!("  \x1b[1mexit\x1b[0m              Exit the shell");
+        println!();
+        println!("\x1b[1;36mDirectory & Environment\x1b[0m");
+        println!();
+        println!("  \x1b[1mcd <dir>\x1b[0m          Change directory");
+        println!("  \x1b[1mcd -\x1b[0m              Go to previous directory");
+        println!("  \x1b[1mexport VAR=val\x1b[0m    Set environment variable");
+        println!("  \x1b[1munset VAR\x1b[0m         Remove environment variable");
+        println!();
+        println!("\x1b[1;36mAliases\x1b[0m");
+        println!();
+        println!("  \x1b[1malias\x1b[0m             List all aliases");
+        println!("  \x1b[1malias k=kubectl\x1b[0m   Create an alias");
+        println!("  \x1b[1munalias k\x1b[0m         Remove an alias");
+        println!();
+        println!("\x1b[1;36mScripting\x1b[0m");
+        println!();
+        println!("  \x1b[1msource <file>\x1b[0m     Execute commands from file");
         println!();
         println!("\x1b[1;36mMentor Verbosity\x1b[0m");
         println!();
-        println!("  \x1b[1mmentor\x1b[0m     Show current verbosity level");
-        println!("  \x1b[1mverbose\x1b[0m    Full explanations with next steps");
-        println!("  \x1b[1mnormal\x1b[0m     Key points only (default)");
-        println!("  \x1b[1mcompact\x1b[0m    One-liner for experts");
+        println!("  \x1b[1mmentor\x1b[0m            Show current verbosity level");
+        println!("  \x1b[1mverbose\x1b[0m           Full explanations with next steps");
+        println!("  \x1b[1mnormal\x1b[0m            Key points only (default)");
+        println!("  \x1b[1mcompact\x1b[0m           One-liner for experts");
         println!();
         println!("\x1b[2mAll other commands are executed in the system shell.\x1b[0m");
         println!("\x1b[2mWhen errors occur, I'll help you understand them.\x1b[0m");
@@ -303,39 +353,6 @@ impl KaidoShell {
             println!("  {:4}  {}", i + 1, entry);
         }
         println!();
-    }
-
-    /// Handle cd command
-    fn handle_cd(&mut self, path: &str) {
-        let path = path.trim();
-
-        // Expand ~ to home directory
-        let expanded = if path == "~" || path.starts_with("~/") {
-            if let Some(home) = dirs::home_dir() {
-                if path == "~" {
-                    home
-                } else {
-                    home.join(&path[2..])
-                }
-            } else {
-                std::path::PathBuf::from(path)
-            }
-        } else if path == "-" {
-            // cd - : go to previous directory (would need to track this)
-            println!("\x1b[33mcd -: previous directory tracking not yet implemented\x1b[0m");
-            return;
-        } else {
-            std::path::PathBuf::from(path)
-        };
-
-        match std::env::set_current_dir(&expanded) {
-            Ok(()) => {
-                // Success - prompt will update automatically
-            }
-            Err(e) => {
-                println!("\x1b[31mcd: {}: {}\x1b[0m", path, e);
-            }
-        }
     }
 
     /// Execute a command via PTY
