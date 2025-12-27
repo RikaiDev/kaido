@@ -19,5 +19,5 @@ pub use tools::{Tool, ToolRegistry, RiskLevel};
 pub use error::PatternMatcher;
 pub use commands::{CommandEngine, CommandResult};
 pub use ai::{AIManager, GeminiBackend, OllamaBackend};
-pub use shell::{PtyExecutor, PtyExecutionResult};
+pub use shell::{KaidoShell, ShellConfig, PromptBuilder, PtyExecutor, PtyExecutionResult};
 

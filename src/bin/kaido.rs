@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use kaido::shell::repl::KaidoREPL;
+use kaido::shell::KaidoShell;
 use kaido::config::{Config, AIProvider};
 use kaido::ai::{GeminiBackend, OllamaBackend};
 use kaido::tools::LLMBackend;
@@ -29,6 +30,8 @@ enum Commands {
         #[arg(long)]
         non_interactive: bool,
     },
+    /// Start the mentor shell (new shell wrapper mode)
+    Shell,
 }
 
 #[tokio::main]
@@ -46,6 +49,10 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Some(Commands::Init { non_interactive }) => {
             run_init_learning(non_interactive).await?;
+        }
+        Some(Commands::Shell) => {
+            let mut shell = KaidoShell::new()?;
+            shell.run().await?;
         }
         None => {
             let mut repl = KaidoREPL::new()?;
