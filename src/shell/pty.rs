@@ -7,6 +7,8 @@ use anyhow::{Context, Result};
 use std::time::{Duration, Instant};
 use tokio::io::AsyncReadExt;
 
+use super::signals::TerminalSize;
+
 /// Result of executing a command in the PTY
 #[derive(Debug, Clone)]
 pub struct PtyExecutionResult {
@@ -62,6 +64,37 @@ impl PtyExecutor {
     /// Set terminal size
     pub fn set_size(&mut self, rows: u16, cols: u16) {
         self.size = (rows, cols);
+    }
+
+    /// Update terminal size from TerminalSize tracker
+    ///
+    /// Returns true if the size changed
+    pub fn update_size_from(&mut self, terminal_size: &TerminalSize) -> bool {
+        let (cols, rows) = terminal_size.get();
+        if self.size != (rows, cols) {
+            self.size = (rows, cols);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Update terminal size from current terminal dimensions
+    ///
+    /// Returns true if the size changed
+    pub fn update_size_from_terminal(&mut self) -> bool {
+        let (cols, rows) = TerminalSize::get_current_size();
+        if self.size != (rows, cols) {
+            self.size = (rows, cols);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Get current terminal size
+    pub fn get_size(&self) -> (u16, u16) {
+        self.size
     }
 
     /// Execute a command in the PTY and capture output
@@ -267,5 +300,30 @@ mod tests {
         let executor = PtyExecutor::default();
         assert!(!executor.shell.is_empty());
         assert_eq!(executor.size, (24, 80));
+    }
+
+    #[test]
+    fn test_update_size_from_terminal_size() {
+        use super::TerminalSize;
+
+        let mut executor = PtyExecutor::new();
+        let terminal_size = TerminalSize::new();
+
+        // Update from terminal size tracker
+        executor.update_size_from(&terminal_size);
+
+        let (cols, rows) = terminal_size.get();
+        assert_eq!(executor.get_size(), (rows, cols));
+    }
+
+    #[test]
+    fn test_update_size_from_terminal() {
+        let mut executor = PtyExecutor::new();
+
+        // Should get current terminal size (or default 80x24)
+        executor.update_size_from_terminal();
+        let (rows, cols) = executor.get_size();
+        assert!(rows > 0);
+        assert!(cols > 0);
     }
 }
