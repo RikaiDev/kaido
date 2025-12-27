@@ -2,8 +2,6 @@
 //
 // Analyzes user behavior to determine skill level and adapt mentor verbosity.
 
-use std::collections::HashMap;
-
 use super::tracker::LearningProgress;
 use crate::mentor::Verbosity;
 

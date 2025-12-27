@@ -14,6 +14,10 @@ path = "src/lib.rs"
 name = "kaido"
 path = "src/bin/kaido.rs"
 
+[[bin]]
+name = "kaido-mcp"
+path = "src/bin/kaido-mcp.rs"
+
 [dependencies]
 # Shell and REPL
 rustyline = "14.0"

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "kaido": {
+      "command": "kaido-mcp",
+      "args": []
+    }
+  }
+}
