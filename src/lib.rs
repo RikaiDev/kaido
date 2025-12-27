@@ -8,6 +8,7 @@ pub mod commands;
 pub mod config;
 pub mod error;
 pub mod kubectl;
+pub mod mentor;
 pub mod shell;
 pub mod tools;
 pub mod ui;
@@ -20,4 +21,5 @@ pub use error::PatternMatcher;
 pub use commands::{CommandEngine, CommandResult};
 pub use ai::{AIManager, GeminiBackend, OllamaBackend};
 pub use shell::{KaidoShell, ShellConfig, PromptBuilder, PtyExecutor, PtyExecutionResult};
+pub use mentor::{ErrorDetector, ErrorInfo, ErrorType};
 

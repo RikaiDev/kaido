@@ -11,6 +11,7 @@ use rustyline::{Config, Editor};
 use super::history::{ensure_history_dir, HistoryConfig};
 use super::prompt::PromptBuilder;
 use super::pty::{PtyExecutionResult, PtyExecutor};
+use crate::mentor::{ErrorDetector, ErrorInfo};
 
 /// Kaido shell configuration
 #[derive(Debug, Clone)]
@@ -46,10 +47,14 @@ pub struct KaidoShell {
     editor: Editor<(), FileHistory>,
     /// Prompt builder
     prompt_builder: PromptBuilder,
+    /// Error detector for mentor system
+    error_detector: ErrorDetector,
     /// Whether the shell is running
     running: bool,
     /// Last execution result (for mentor system)
     last_result: Option<PtyExecutionResult>,
+    /// Last detected error (for mentor system)
+    last_error: Option<ErrorInfo>,
 }
 
 impl KaidoShell {
@@ -103,8 +108,10 @@ impl KaidoShell {
             pty,
             editor,
             prompt_builder,
+            error_detector: ErrorDetector::new(),
             running: false,
             last_result: None,
+            last_error: None,
         })
     }
 
@@ -287,16 +294,66 @@ impl KaidoShell {
             }
         }
 
-        // Check for errors (for future mentor integration)
-        if result.failed() {
-            // TODO: Integrate mentor system here
-            // For now, just store the result for potential mentor use
+        // Analyze for errors using the mentor system
+        if let Some(error_info) = self.error_detector.analyze(&result) {
+            // Display mentor guidance
+            self.display_mentor_block(&error_info);
+            self.last_error = Some(error_info);
             self.last_result = Some(result);
         } else {
+            self.last_error = None;
             self.last_result = None;
         }
 
         Ok(())
+    }
+
+    /// Display a basic mentor block for detected errors
+    /// (Full formatting will be in issue #22)
+    fn display_mentor_block(&self, error: &ErrorInfo) {
+        println!();
+        println!("\x1b[36m┌─ MENTOR ────────────────────────────────────────────────────┐\x1b[0m");
+        println!("\x1b[36m│\x1b[0m                                                              \x1b[36m│\x1b[0m");
+
+        // Error type
+        println!(
+            "\x1b[36m│\x1b[0m  \x1b[1;33mType:\x1b[0m {}{}",
+            error.error_type.name(),
+            " ".repeat(47 - error.error_type.name().len()).chars().take(47 - error.error_type.name().len()).collect::<String>() + "\x1b[36m│\x1b[0m"
+        );
+
+        // Key message (truncate if too long)
+        let key_msg = if error.key_message.len() > 50 {
+            format!("{}...", &error.key_message[..47])
+        } else {
+            error.key_message.clone()
+        };
+        println!(
+            "\x1b[36m│\x1b[0m  \x1b[1;31mKey:\x1b[0m  {}{}",
+            key_msg,
+            " ".repeat(50usize.saturating_sub(key_msg.len())).chars().take(50 - key_msg.len().min(50)).collect::<String>() + "\x1b[36m│\x1b[0m"
+        );
+
+        // Source location if available
+        if let Some(ref loc) = error.source_location {
+            let loc_str = loc.to_string();
+            let loc_display = if loc_str.len() > 48 {
+                format!("...{}", &loc_str[loc_str.len()-45..])
+            } else {
+                loc_str
+            };
+            println!(
+                "\x1b[36m│\x1b[0m  \x1b[1;34mLocation:\x1b[0m {}{}",
+                loc_display,
+                " ".repeat(45usize.saturating_sub(loc_display.len())) + "\x1b[36m│\x1b[0m"
+            );
+        }
+
+        println!("\x1b[36m│\x1b[0m                                                              \x1b[36m│\x1b[0m");
+        println!("\x1b[36m│\x1b[0m  \x1b[2m(Full guidance coming in future update)\x1b[0m                   \x1b[36m│\x1b[0m");
+        println!("\x1b[36m│\x1b[0m                                                              \x1b[36m│\x1b[0m");
+        println!("\x1b[36m└──────────────────────────────────────────────────────────────┘\x1b[0m");
+        println!();
     }
 
     /// Save history to file
@@ -310,6 +367,11 @@ impl KaidoShell {
     /// Get the last execution result
     pub fn last_result(&self) -> Option<&PtyExecutionResult> {
         self.last_result.as_ref()
+    }
+
+    /// Get the last detected error
+    pub fn last_error(&self) -> Option<&ErrorInfo> {
+        self.last_error.as_ref()
     }
 
     /// Check if shell is running
