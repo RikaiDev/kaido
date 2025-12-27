@@ -14,7 +14,7 @@ use super::builtins::{execute_builtin, parse_builtin, Builtin, BuiltinResult, Sh
 use super::history::{ensure_history_dir, HistoryConfig};
 use super::prompt::PromptBuilder;
 use super::pty::{PtyExecutionResult, PtyExecutor};
-use crate::learning::{LearningTracker, SkillDetector, VerbosityMode};
+use crate::learning::{LearningTracker, SessionStats, SkillDetector, SummaryGenerator, VerbosityMode};
 use crate::mentor::{ErrorDetector, ErrorInfo, MentorDisplay, Verbosity};
 
 /// Kaido shell configuration
@@ -78,6 +78,8 @@ pub struct KaidoShell {
     learning_tracker: Option<LearningTracker>,
     /// Skill detector for adaptive verbosity
     skill_detector: SkillDetector,
+    /// Session statistics for summary
+    session_stats: SessionStats,
     /// Whether the shell is running
     running: bool,
     /// Last execution result (for mentor system)
@@ -161,6 +163,7 @@ impl KaidoShell {
             mentor_display,
             learning_tracker,
             skill_detector: SkillDetector::new(),
+            session_stats: SessionStats::new(),
             running: false,
             last_result: None,
             last_error: None,
@@ -246,6 +249,11 @@ impl KaidoShell {
             }
         }
 
+        // Display session summary if we did anything
+        if self.session_stats.commands_executed > 0 {
+            self.display_session_summary();
+        }
+
         // End learning session
         if let Some(ref mut tracker) = self.learning_tracker {
             let _ = tracker.end_session();
@@ -255,6 +263,13 @@ impl KaidoShell {
         self.save_history()?;
 
         Ok(())
+    }
+
+    /// Display session summary
+    fn display_session_summary(&self) {
+        let summary = SummaryGenerator::generate(&self.session_stats);
+        let output = SummaryGenerator::render(&summary);
+        print!("{}", output);
     }
 
     /// Handle built-in shell commands
@@ -565,6 +580,9 @@ impl KaidoShell {
 
     /// Execute a command via PTY
     async fn execute_command(&mut self, command: &str) -> Result<()> {
+        // Track command in session stats
+        self.session_stats.record_command(command);
+
         let result = self.pty.execute(command).await
             .context("Failed to execute command")?;
 
@@ -586,6 +604,8 @@ impl KaidoShell {
                     if let Some(ref tracker) = self.learning_tracker {
                         let _ = tracker.mark_resolved(tracked.id, resolution_time);
                     }
+                    // Track resolution in session stats
+                    self.session_stats.record_resolution();
                 }
             }
         }
@@ -609,6 +629,9 @@ impl KaidoShell {
                     });
                 }
             }
+
+            // Track error in session stats
+            self.session_stats.record_error(error_info.error_type.name());
 
             // Display mentor guidance
             self.display_mentor_block(&error_info);

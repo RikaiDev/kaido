@@ -6,11 +6,14 @@
 // - Tracks resolution time
 // - Provides learning progress summary
 // - Detects skill level and adapts verbosity
+// - Generates session summaries
 
 pub mod schema;
 pub mod skill;
+pub mod summary;
 pub mod tracker;
 
 pub use schema::{default_learning_db_path, ensure_learning_dir};
 pub use skill::{SkillAssessment, SkillDetector, SkillIndicator, SkillLevel, VerbosityMode};
+pub use summary::{SessionStats, SessionSummary, SummaryGenerator};
 pub use tracker::{ErrorEncounter, ErrorSummary, LearningProgress, LearningTracker};
