@@ -18,5 +18,5 @@ pub use agent::{AgentLoop, AgentState, AgentStep, StepType};
 pub use tools::{Tool, ToolRegistry, RiskLevel};
 pub use error::PatternMatcher;
 pub use commands::{CommandEngine, CommandResult};
-pub use ai::{AIManager, GeminiBackend};
+pub use ai::{AIManager, GeminiBackend, OllamaBackend};
 

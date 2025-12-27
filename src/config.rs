@@ -1,6 +1,40 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+/// AI provider selection
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum AIProvider {
+    /// Automatically select: Gemini -> Ollama -> Error
+    #[default]
+    Auto,
+    /// Use Gemini API only
+    Gemini,
+    /// Use Ollama only (local)
+    Ollama,
+}
+
+/// Ollama configuration for local model inference
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OllamaConfig {
+    /// Ollama API base URL
+    pub base_url: String,
+    /// Model name (e.g., "llama3.2", "mistral", "qwen2.5")
+    pub model: String,
+    /// Request timeout in seconds
+    pub timeout_seconds: u64,
+}
+
+impl Default for OllamaConfig {
+    fn default() -> Self {
+        Self {
+            base_url: "http://localhost:11434".to_string(),
+            model: "llama3.2".to_string(),
+            timeout_seconds: 120,
+        }
+    }
+}
+
 /// OpenAI API configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAIConfig {
@@ -80,11 +114,17 @@ impl Default for DisplayConfig {
 /// Main configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
+    /// AI provider selection: auto, gemini, or ollama
+    #[serde(default)]
+    pub provider: AIProvider,
     pub ai: OpenAIConfig,
+    /// Ollama configuration for local model inference
+    #[serde(default)]
+    pub ollama: OllamaConfig,
     pub audit: AuditConfig,
     pub safety: SafetyConfig,
     pub display: DisplayConfig,
-    
+
     /// Gemini API key (optional, can also be set via GEMINI_API_KEY env var)
     pub gemini_api_key: Option<String>,
 }
@@ -92,7 +132,9 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            provider: AIProvider::default(),
             ai: OpenAIConfig::default(),
+            ollama: OllamaConfig::default(),
             audit: AuditConfig::default(),
             safety: SafetyConfig::default(),
             display: DisplayConfig::default(),
