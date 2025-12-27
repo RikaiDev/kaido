@@ -1,0 +1,44 @@
+locale = "es"
+version = "1.0.0"
+
+[ui]
+welcome = "Bienvenido a Kaido AI Shell"
+help_text = "Escribe 'help' para obtener ayuda o dime en lenguaje natural qué quieres hacer"
+prompt = "kaido> "
+command_not_found = "Comando '{command}' no encontrado. Escribe 'help' para ver los comandos disponibles."
+confirm_action = "¿Estás seguro de que quieres {action}? (y/N)"
+success = "Completado exitosamente: {action}"
+error_generic = "Ocurrió un error. Por favor, inténtalo de nuevo."
+error_command_failed = "El comando '{command}' falló al ejecutarse"
+error_safety_violation = "El comando '{command}' fue bloqueado por razones de seguridad"
+error_config = "Error de configuración. Por favor, revisa tu configuración."
+error_model = "Error del modelo AI. Por favor, revisa tu configuración del modelo."
+
+[ai_prompts]
+reasoning_start = "Déjame pensar esto paso a paso:"
+reasoning_step = "Paso {step}: {description}"
+reasoning_end = "Basándome en este razonamiento, ejecutaré:"
+command_generation = "Generaré el siguiente comando:"
+error_explanation = "Déjame explicar qué salió mal:"
+help_response = "Puedo ayudarte con:"
+cultural_context = "Considerando tu contexto cultural:"
+
+[cultural]
+region = "ES"
+timezone = "Europe/Madrid"
+date_format = "%d/%m/%Y"
+number_format = "es-ES"
+currency = "EUR"
+
+[cultural.cultural_norms]
+formality = "medium"
+respect = "important"
+family_oriented = "valued"
+social_interaction = "important"
+
+[cultural.technical_terms]
+file = "archivo"
+directory = "directorio"
+command = "comando"
+process = "proceso"
+system = "sistema"

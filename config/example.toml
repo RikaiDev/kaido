@@ -1,0 +1,67 @@
+# Kaido AI Shell - Example Configuration
+# Copy this file to ~/.kaido/config.toml and customize
+
+# =============================================================================
+# AI Configuration (OpenAI GPT-4 Turbo)
+# =============================================================================
+[ai]
+# OpenAI API key (required)
+# Get your key from: https://platform.openai.com/api-keys
+api_key = "sk-your-openai-api-key-here"
+
+# Model to use for translation
+# Options: "gpt-4-turbo-preview", "gpt-4", "gpt-3.5-turbo"
+model = "gpt-4-turbo-preview"
+
+# API request timeout in seconds
+timeout_seconds = 10
+
+# OpenAI API base URL (optional, for custom endpoints)
+base_url = "https://api.openai.com/v1"
+
+# =============================================================================
+# Audit Logging Configuration
+# =============================================================================
+[audit]
+# Retention period for audit logs in days
+# Logs older than this will be automatically deleted on startup
+retention_days = 90
+
+# Database path (optional, defaults to ~/.kaido/audit.db)
+# database_path = "/custom/path/to/audit.db"
+
+# =============================================================================
+# Safety Configuration
+# =============================================================================
+[safety]
+# Enable confirmation modals for risky commands
+enable_confirmations = true
+
+# Override risk levels for specific commands (optional)
+# Format: command_pattern = "LOW" | "MEDIUM" | "HIGH"
+# [safety.overrides]
+# "kubectl apply -f test.yaml" = "LOW"  # Allow this specific command without confirmation
+# "kubectl delete namespace" = "HIGH"   # Force high risk for namespace deletions
+
+# =============================================================================
+# Display Configuration
+# =============================================================================
+[display]
+# Show confidence warnings when AI confidence is below this threshold (0-100)
+show_confidence_threshold = 70
+
+# Show detailed reasoning for low-confidence translations
+show_reasoning = true
+
+# =============================================================================
+# Advanced Options (Optional)
+# =============================================================================
+
+# Logging level (optional)
+# Options: "error", "warn", "info", "debug", "trace"
+# log_level = "info"
+
+# Kubeconfig path (optional, defaults to ~/.kube/config or $KUBECONFIG)
+# kubeconfig_path = "/custom/path/to/kubeconfig"
+
+

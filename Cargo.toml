@@ -1,0 +1,63 @@
+[package]
+name = "kaido"
+version = "0.1.0"
+edition = "2021"
+description = "AI-powered shell that executes tasks from natural language descriptions"
+authors = ["RikaiDev"]
+license = "MIT"
+
+[lib]
+name = "kaido"
+path = "src/lib.rs"
+
+[[bin]]
+name = "kaido"
+path = "src/bin/kaido.rs"
+
+[dependencies]
+# Shell and REPL
+rustyline = "14.0"
+crossterm = "0.27"
+tokio = { version = "1.0", features = ["full"] }
+
+# AI and ML
+llama-cpp-2 = { git = "https://github.com/utilityai/llama-cpp-rs" }
+
+# HTTP clients for cloud APIs
+reqwest = { version = "0.11", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Configuration
+toml = "0.8"
+dirs = "5.0"
+
+# Internationalization
+fluent = "0.16"
+unic-langid = "0.9"
+
+# Utilities
+anyhow = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+log = "0.4"
+env_logger = "0.10"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+thiserror = "1.0"
+
+# Process and system
+which = "4.4"
+users = "0.11"
+ratatui = "0.27"
+libc = "0.2"
+regex = "1.10"
+
+# Memory and storage
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# Async trait support
+async-trait = "0.1"
+
+[dev-dependencies]
+tempfile = "3.8"

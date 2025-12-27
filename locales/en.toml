@@ -1,0 +1,44 @@
+locale = "en"
+version = "1.0.0"
+
+[ui]
+welcome = "Welcome to Kaido AI Shell"
+help_text = "Type 'help' for assistance or ask me to do something in natural language"
+prompt = "kaido> "
+command_not_found = "Command '{command}' not found. Try 'help' for available commands."
+confirm_action = "Are you sure you want to {action}? (y/N)"
+success = "Successfully completed: {action}"
+error_generic = "An error occurred. Please try again."
+error_command_failed = "Command '{command}' failed to execute"
+error_safety_violation = "Command '{command}' was blocked for safety reasons"
+error_config = "Configuration error. Please check your settings."
+error_model = "AI model error. Please check your model configuration."
+
+[ai_prompts]
+reasoning_start = "Let me think through this step by step:"
+reasoning_step = "Step {step}: {description}"
+reasoning_end = "Based on this reasoning, I'll execute:"
+command_generation = "I'll generate the following command:"
+error_explanation = "Let me explain what went wrong:"
+help_response = "I can help you with:"
+cultural_context = "Considering your cultural context:"
+
+[cultural]
+region = "US"
+timezone = "America/New_York"
+date_format = "%m/%d/%Y"
+number_format = "en-US"
+currency = "USD"
+
+[cultural.cultural_norms]
+formality = "low"
+direct_communication = "preferred"
+individualism = "valued"
+efficiency = "important"
+
+[cultural.technical_terms]
+file = "file"
+directory = "directory"
+command = "command"
+process = "process"
+system = "system"

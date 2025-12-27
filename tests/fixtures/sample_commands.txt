@@ -1,0 +1,443 @@
+# Sample commands for testing command execution
+
+# Basic file operations
+ls -la
+cd /tmp
+pwd
+mkdir test_dir
+rmdir test_dir
+
+# Text processing
+echo "Hello World"
+cat /etc/passwd | head -5
+grep "root" /etc/passwd
+
+# Git operations
+git status
+git add .
+git commit -m "Test commit"
+git push origin main
+
+# Package management
+npm install lodash
+pip install requests
+cargo build
+
+# System operations
+ps aux | grep python
+df -h
+free -m
+uptime
+
+# Network operations
+curl -s https://api.github.com
+wget https://example.com
+ping -c 3 google.com
+
+# Dangerous commands (for safety testing)
+rm -rf /tmp/test
+sudo rm -rf /
+chmod 777 /etc/passwd
+dd if=/dev/zero of=/dev/sda
+mkfs.ext4 /dev/sda1
+fdisk /dev/sda
+parted /dev/sda
+
+# Complex commands
+find /home -name "*.txt" -exec grep -l "pattern" {} \;
+tar -czf backup.tar.gz /home/user
+rsync -av /source/ /destination/
+
+# Environment variables
+export TEST_VAR=value
+echo $TEST_VAR
+env | grep TEST
+
+# Process management
+sleep 5 &
+jobs
+kill %1
+nohup long_running_command &
+
+# File permissions
+chmod +x script.sh
+chown user:group file.txt
+umask 022
+
+# Text editing
+sed 's/old/new/g' file.txt
+awk '{print $1}' file.txt
+sort file.txt | uniq
+
+# Compression
+gzip file.txt
+gunzip file.txt.gz
+zip -r archive.zip directory/
+unzip archive.zip
+
+# Date and time
+date
+date +%Y-%m-%d
+timedatectl
+
+# User management
+whoami
+id
+groups
+last
+
+# Disk operations
+lsblk
+mount
+umount /mnt/point
+blkid
+
+# Network configuration
+ip addr show
+ip route show
+netstat -tuln
+ss -tuln
+
+# Service management
+systemctl status ssh
+systemctl start nginx
+systemctl enable docker
+
+# Log analysis
+tail -f /var/log/syslog
+journalctl -u nginx
+dmesg | tail
+
+# Performance monitoring
+top
+htop
+iostat
+vmstat
+
+# Security
+ssh-keygen -t rsa
+openssl genrsa -out key.pem 2048
+gpg --gen-key
+
+# Development tools
+make
+cmake .
+./configure
+make install
+
+# Database operations
+mysql -u root -p
+psql -U postgres
+sqlite3 database.db
+
+# Web development
+npm run dev
+python -m http.server 8000
+php -S localhost:8080
+
+# Container operations
+docker run hello-world
+docker build -t myapp .
+docker-compose up
+
+# Cloud operations
+aws s3 ls
+gcloud compute instances list
+az vm list
+
+# Backup and restore
+cp -r /source /backup
+rsync -av --delete /source/ /backup/
+tar -czf backup-$(date +%Y%m%d).tar.gz /data
+
+# System maintenance
+apt update && apt upgrade
+yum update
+brew update && brew upgrade
+
+# Monitoring
+watch -n 1 'ps aux | grep python'
+htop -d 1
+iotop
+
+# File system operations
+du -sh /home
+find /var -size +100M
+df -i
+
+# Network troubleshooting
+traceroute google.com
+nslookup google.com
+dig google.com
+
+# Process debugging
+strace -p 1234
+ltrace -p 1234
+gdb -p 1234
+
+# System information
+uname -a
+lscpu
+lsmem
+lspci
+lsusb
+
+# Text processing advanced
+cut -d: -f1 /etc/passwd
+paste file1.txt file2.txt
+join file1.txt file2.txt
+comm file1.txt file2.txt
+
+# Regular expressions
+grep -E "^[0-9]+$" file.txt
+sed -n '10,20p' file.txt
+awk '/pattern/ {print NR, $0}' file.txt
+
+# Parallel processing
+parallel echo ::: A B C
+xargs -n 1 -P 4 wget < urls.txt
+find . -name "*.txt" | parallel gzip
+
+# Advanced shell features
+for i in {1..10}; do echo $i; done
+while read line; do echo "$line"; done < file.txt
+if [ -f file.txt ]; then echo "exists"; fi
+
+# Function definitions
+myfunc() { echo "Hello from function"; }
+myfunc
+
+# Aliases
+alias ll='ls -la'
+alias grep='grep --color=auto'
+
+# History manipulation
+history | grep "git"
+!!  # repeat last command
+!$  # last argument of last command
+
+# Job control
+command &
+fg
+bg
+Ctrl+Z  # suspend
+Ctrl+C  # interrupt
+
+# Redirection
+command > output.txt
+command >> output.txt
+command 2> error.txt
+command &> all.txt
+command < input.txt
+
+# Pipes
+command1 | command2 | command3
+command1 | tee output.txt | command2
+
+# Process substitution
+diff <(command1) <(command2)
+command <(command1) <(command2)
+
+# Here documents
+cat << EOF
+This is a here document
+It can contain multiple lines
+EOF
+
+# Here strings
+command <<< "input string"
+
+# Arithmetic
+echo $((2 + 3))
+echo $((10 / 3))
+
+# String manipulation
+str="Hello World"
+echo ${str:0:5}  # Hello
+echo ${str#Hello}  # World
+echo ${str%World}  # Hello
+
+# Arrays
+arr=(apple banana cherry)
+echo ${arr[0]}  # apple
+echo ${arr[@]}  # all elements
+
+# Associative arrays
+declare -A colors
+colors[red]="#FF0000"
+colors[green]="#00FF00"
+echo ${colors[red]}
+
+# Conditional execution
+command1 && command2  # run command2 if command1 succeeds
+command1 || command2  # run command2 if command1 fails
+
+# Grouping commands
+(command1; command2) > output.txt
+{ command1; command2; } > output.txt
+
+# Subshells
+(cd /tmp; pwd)  # doesn't affect current directory
+cd /tmp; pwd    # affects current directory
+
+# Background processes
+nohup long_command &
+disown
+
+# Signal handling
+trap 'echo "Caught signal"' SIGINT
+trap 'cleanup_function' EXIT
+
+# Debugging
+set -x  # enable debug mode
+set +x  # disable debug mode
+bash -x script.sh
+
+# Error handling
+set -e  # exit on error
+set -u  # exit on undefined variable
+set -o pipefail  # exit on pipe failure
+
+# File descriptors
+exec 3> output.txt
+echo "Hello" >&3
+exec 3>&-
+
+# Named pipes
+mkfifo mypipe
+command1 > mypipe &
+command2 < mypipe
+
+# Process substitution with named pipes
+command1 | tee >(command2) | command3
+
+# Advanced redirection
+command 2>&1 | tee output.txt
+command > >(command2) 2> >(command3)
+
+# Complex pipelines
+find . -name "*.txt" | xargs grep -l "pattern" | xargs wc -l | sort -n
+
+# Parallel processing with xargs
+find . -name "*.txt" | xargs -n 1 -P 4 wc -l
+
+# Advanced find usage
+find . -type f -name "*.txt" -exec grep -l "pattern" {} \; -print
+
+# Advanced grep usage
+grep -r --include="*.txt" "pattern" .
+grep -A 5 -B 5 "pattern" file.txt
+grep -v "pattern" file.txt
+
+# Advanced sed usage
+sed -i 's/old/new/g' file.txt
+sed -n '10,20p' file.txt
+sed '/pattern/d' file.txt
+
+# Advanced awk usage
+awk 'BEGIN{FS=":"} {print $1}' /etc/passwd
+awk '{sum+=$1} END{print sum}' numbers.txt
+awk '/pattern/{print NR, $0}' file.txt
+
+# Advanced cut usage
+cut -d: -f1,3 /etc/passwd
+cut -c1-10 file.txt
+
+# Advanced sort usage
+sort -k2 -n file.txt
+sort -u file.txt
+sort -r file.txt
+
+# Advanced uniq usage
+sort file.txt | uniq -c
+sort file.txt | uniq -d
+sort file.txt | uniq -u
+
+# Advanced comm usage
+comm -12 file1.txt file2.txt  # common lines
+comm -23 file1.txt file2.txt  # lines only in file1
+comm -13 file1.txt file2.txt  # lines only in file2
+
+# Advanced join usage
+join -t: file1.txt file2.txt
+join -1 2 -2 1 file1.txt file2.txt
+
+# Advanced paste usage
+paste file1.txt file2.txt
+paste -d: file1.txt file2.txt
+
+# Advanced tr usage
+tr 'a-z' 'A-Z' < file.txt
+tr -d '0-9' < file.txt
+tr -s ' ' < file.txt
+
+# Advanced head/tail usage
+head -n 20 file.txt
+tail -n 20 file.txt
+tail -f /var/log/syslog
+
+# Advanced wc usage
+wc -l file.txt
+wc -w file.txt
+wc -c file.txt
+wc -m file.txt
+
+# Advanced split usage
+split -l 1000 large_file.txt
+split -b 1M large_file.txt
+
+# Advanced tee usage
+command | tee output.txt
+command | tee -a output.txt
+command | tee >(grep pattern) >(wc -l)
+
+# Advanced xargs usage
+find . -name "*.txt" | xargs rm
+find . -name "*.txt" | xargs -I {} cp {} /backup/
+find . -name "*.txt" | xargs -0 -I {} cp {} /backup/
+
+# Advanced parallel usage
+parallel echo ::: A B C D
+parallel -j 4 wget ::: url1 url2 url3 url4
+parallel -j 4 --line-buffer command :::: file.txt
+
+# Advanced rsync usage
+rsync -av --delete /source/ /destination/
+rsync -av --exclude='*.tmp' /source/ /destination/
+rsync -av --progress /source/ /destination/
+
+# Advanced tar usage
+tar -czf backup.tar.gz /home/user
+tar -xzf backup.tar.gz
+tar -tf backup.tar.gz
+
+# Advanced zip usage
+zip -r archive.zip directory/
+unzip -l archive.zip
+unzip -o archive.zip
+
+# Advanced gzip usage
+gzip file.txt
+gunzip file.txt.gz
+zcat file.txt.gz
+
+# Advanced bzip2 usage
+bzip2 file.txt
+bunzip2 file.txt.bz2
+bzcat file.txt.bz2
+
+# Advanced xz usage
+xz file.txt
+unxz file.txt.xz
+xzcat file.txt.xz
+
+# Advanced lz4 usage
+lz4 file.txt
+lz4 -d file.txt.lz4
+lz4cat file.txt.lz4
+
+# Advanced zstd usage
+zstd file.txt
+zstd -d file.txt.zst
+zstdcat file.txt.zst
+

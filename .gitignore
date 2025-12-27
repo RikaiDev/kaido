@@ -1,0 +1,39 @@
+# Rust
+/target/
+Cargo.lock
+debug/
+release/
+*.rs.bk
+*.rlib
+*.prof*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Models (too large for git)
+models/*.gguf
+models/*.bin
+
+# Config (may contain secrets)
+config/local.toml
+config/production.toml
+
+# Cache
+.cache/
+
+# Environment variables
+.env*
+
+# Kaido runtime data
+.kaido/
+*/.kaido/

@@ -1,0 +1,26 @@
+# Kaido AI Shell Configuration (Kubectl MVP)
+# Copy to ~/.kaido/config.toml and customize
+
+[ai]
+# OpenAI API Configuration
+# Get your API key from: https://platform.openai.com/api-keys
+api_key = ""  # REQUIRED: Set your OpenAI API key here
+model = "gpt-4-turbo-preview"
+base_url = "https://api.openai.com/v1"
+timeout_seconds = 10
+
+[audit]
+# Audit Log Configuration
+database_path = "~/.kaido/audit.db"  # Will be expanded to full path
+retention_days = 90
+
+[safety]
+# Safety Configuration
+confirm_destructive = true
+require_typed_confirmation_in_production = true
+log_commands = true
+
+[display]
+# Display Configuration
+show_confidence_threshold = 70  # Show warning if AI confidence below this
+show_reasoning = false  # Set to true to see AI reasoning for every command

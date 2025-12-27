@@ -1,0 +1,44 @@
+locale = "zh-TW"
+version = "1.0.0"
+
+[ui]
+welcome = "歡迎使用 Kaido AI Shell"
+help_text = "輸入 'help' 獲取協助，或用自然語言告訴我您想要做什麼"
+prompt = "kaido> "
+command_not_found = "找不到指令 '{command}'。請輸入 'help' 查看可用指令。"
+confirm_action = "您確定要 {action} 嗎？(y/N)"
+success = "成功完成：{action}"
+error_generic = "發生錯誤。請重試。"
+error_command_failed = "指令 '{command}' 執行失敗"
+error_safety_violation = "指令 '{command}' 因安全原因被阻止"
+error_config = "設定錯誤。請檢查您的設定。"
+error_model = "AI 模型錯誤。請檢查您的模型設定。"
+
+[ai_prompts]
+reasoning_start = "讓我逐步分析這個問題："
+reasoning_step = "步驟 {step}：{description}"
+reasoning_end = "基於這個分析，我將執行："
+command_generation = "我將產生以下指令："
+error_explanation = "讓我解釋一下出了什麼問題："
+help_response = "我可以協助您："
+cultural_context = "考慮到您的文化背景："
+
+[cultural]
+region = "TW"
+timezone = "Asia/Taipei"
+date_format = "%Y年%m月%d日"
+number_format = "zh-TW"
+currency = "TWD"
+
+[cultural.cultural_norms]
+formality = "high"
+hierarchy = "important"
+indirect_communication = "preferred"
+group_harmony = "valued"
+
+[cultural.technical_terms]
+file = "檔案"
+directory = "目錄"
+command = "指令"
+process = "程序"
+system = "系統"

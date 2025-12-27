@@ -1,0 +1,45 @@
+locale = "ja"
+version = "1.0.0"
+
+[ui]
+welcome = "Kaido AI Shell へようこそ"
+help_text = "'help' と入力してヘルプを表示するか、自然言語で何をしたいか教えてください"
+prompt = "kaido> "
+command_not_found = "コマンド '{command}' が見つかりません。'help' と入力して利用可能なコマンドを確認してください。"
+confirm_action = "{action} を実行してもよろしいですか？(y/N)"
+success = "正常に完了しました：{action}"
+error_generic = "エラーが発生しました。再試行してください。"
+error_command_failed = "コマンド '{command}' の実行に失敗しました"
+error_safety_violation = "セキュリティ上の理由でコマンド '{command}' がブロックされました"
+error_config = "設定エラー。設定を確認してください。"
+error_model = "AI モデルエラー。モデル設定を確認してください。"
+
+[ai_prompts]
+reasoning_start = "この問題を段階的に分析いたします："
+reasoning_step = "ステップ {step}：{description}"
+reasoning_end = "この分析に基づいて、以下を実行いたします："
+command_generation = "以下のコマンドを生成いたします："
+error_explanation = "何が問題だったか説明いたします："
+help_response = "以下のことでお手伝いできます："
+cultural_context = "あなたの文化的背景を考慮して："
+
+[cultural]
+region = "JP"
+timezone = "Asia/Tokyo"
+date_format = "%Y年%m月%d日"
+number_format = "ja-JP"
+currency = "JPY"
+
+[cultural.cultural_norms]
+formality = "very_high"
+hierarchy = "very_important"
+indirect_communication = "essential"
+group_harmony = "paramount"
+precision = "high"
+
+[cultural.technical_terms]
+file = "ファイル"
+directory = "ディレクトリ"
+command = "コマンド"
+process = "プロセス"
+system = "システム"

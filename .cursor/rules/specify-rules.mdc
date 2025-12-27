@@ -1,0 +1,43 @@
+# kaido-ai Development Guidelines
+
+Auto-generated from all feature plans. Last updated: 2025-10-22
+
+## Active Technologies
+- Rust 1.75+ (existing codebase) + TOML parsing (toml crate), CLI argument parsing (clap), HTTP client (reqwest), Configuration management (dirs crate) (002-user-setup-guide)
+- Local configuration files (TOML format), API key storage in user config directory (002-user-setup-guide)
+- Rust 1.75+ (existing project constraint) + fluent-rs (i18n), unic-langid (locale detection), tokio (async), serde (serialization) (003-i18n-system)
+- TOML configuration files, JSON translation resources (003-i18n-system)
+- Rust 1.75+ (current project language) + rustyline, serde, toml, tokio (existing project dependencies) (004-fix-build-warnings-remove-emojis)
+- N/A (no data persistence required for this feature) (004-fix-build-warnings-remove-emojis)
+- Rust 1.75+ (existing project) + okio, tracing, rustyline, toml (existing) (005-shell-logging-improvement)
+- ~/.config/kaido/config.toml (XDG Base Directory) (005-shell-logging-improvement)
+- Rust 1.75+ (already established in project) (006-tui-interface)
+- File-based allowlist in user config directory (~/.config/kaido/allowlist.txt or similar) (006-tui-interface)
+- Rust 1.75+ (edition 2021) (007-kubectl-mvp-refactor)
+- SQLite database for audit logs (location: `~/.kaido/audit.db`) (007-kubectl-mvp-refactor)
+
+- Rust 1.75+ (performance and memory safety for CLI tool) + rustyline (REPL), candle-core (AI inference), tokio (async runtime), clap (CLI parsing) (001-ai-shell-core)
+
+## Project Structure
+
+```text
+src/
+tests/
+```
+
+## Commands
+
+cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] cargo clippy
+
+## Code Style
+
+Rust 1.75+ (performance and memory safety for CLI tool): Follow standard conventions
+
+## Recent Changes
+- 007-kubectl-mvp-refactor: Added Rust 1.75+ (edition 2021)
+- 006-tui-interface: Added Rust 1.75+ (already established in project)
+- 005-shell-logging-improvement: Added Rust 1.75+ (existing project) + okio, tracing, rustyline, toml (existing)
+
+
+<!-- MANUAL ADDITIONS START -->
+<!-- MANUAL ADDITIONS END -->

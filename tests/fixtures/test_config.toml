@@ -1,0 +1,45 @@
+# Test configuration for Kaido AI Shell
+
+[model]
+name = "test-model"
+path = "tests/fixtures/test_models/test.gguf"
+type = "local"
+max_tokens = 512
+temperature = 0.5
+context_size = 1024
+
+[safety]
+require_confirmation_for = [
+    "rm -rf",
+    "sudo",
+    "chmod 777",
+]
+auto_confirm_safe_commands = false
+log_all_commands = true
+max_plan_steps = 5
+
+[shell]
+default_prompt = "test> "
+history_size = 100
+auto_complete = false
+show_execution_time = false
+timeout_seconds = 10
+
+[logging]
+level = "debug"
+file = "/tmp/kaido_test.log"
+max_file_size = "1MB"
+max_files = 2
+
+[ai]
+explanation_style = "beginner"
+safety_level = "high"
+auto_execute_plans = false
+max_retries = 1
+response_timeout = 5
+
+[privacy]
+offline_mode = true
+log_ai_interactions = true
+anonymize_commands = false
+
