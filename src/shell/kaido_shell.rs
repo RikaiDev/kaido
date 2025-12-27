@@ -8,10 +8,13 @@ use rustyline::error::ReadlineError;
 use rustyline::history::FileHistory;
 use rustyline::{Config, Editor};
 
+use std::time::Instant;
+
 use super::builtins::{execute_builtin, parse_builtin, Builtin, BuiltinResult, ShellEnvironment};
 use super::history::{ensure_history_dir, HistoryConfig};
 use super::prompt::PromptBuilder;
 use super::pty::{PtyExecutionResult, PtyExecutor};
+use crate::learning::LearningTracker;
 use crate::mentor::{ErrorDetector, ErrorInfo, MentorDisplay, Verbosity};
 
 /// Kaido shell configuration
@@ -41,6 +44,17 @@ impl Default for ShellConfig {
     }
 }
 
+/// Tracked error for resolution detection
+#[derive(Debug)]
+struct TrackedError {
+    /// Database ID of the error
+    id: i64,
+    /// The command that caused the error
+    command: String,
+    /// When the error occurred
+    timestamp: Instant,
+}
+
 /// The main Kaido shell
 pub struct KaidoShell {
     /// Configuration
@@ -57,12 +71,16 @@ pub struct KaidoShell {
     error_detector: ErrorDetector,
     /// Mentor display for formatting guidance
     mentor_display: MentorDisplay,
+    /// Learning tracker for progress
+    learning_tracker: Option<LearningTracker>,
     /// Whether the shell is running
     running: bool,
     /// Last execution result (for mentor system)
     last_result: Option<PtyExecutionResult>,
     /// Last detected error (for mentor system)
     last_error: Option<ErrorInfo>,
+    /// Tracked error for resolution detection
+    tracked_error: Option<TrackedError>,
 }
 
 impl KaidoShell {
@@ -119,6 +137,15 @@ impl KaidoShell {
         };
         let mentor_display = MentorDisplay::with_config(mentor_display_config);
 
+        // Try to create learning tracker (non-fatal if it fails)
+        let learning_tracker = match LearningTracker::with_default_path() {
+            Ok(tracker) => Some(tracker),
+            Err(e) => {
+                log::warn!("Failed to create learning tracker: {}", e);
+                None
+            }
+        };
+
         Ok(Self {
             config,
             pty,
@@ -127,9 +154,11 @@ impl KaidoShell {
             shell_env: ShellEnvironment::new(),
             error_detector: ErrorDetector::new(),
             mentor_display,
+            learning_tracker,
             running: false,
             last_result: None,
             last_error: None,
+            tracked_error: None,
         })
     }
 
@@ -162,6 +191,12 @@ impl KaidoShell {
     /// Run the shell main loop
     pub async fn run(&mut self) -> Result<()> {
         self.running = true;
+
+        // Start a learning session
+        if let Some(ref mut tracker) = self.learning_tracker {
+            let _ = tracker.start_session();
+        }
+
         self.display_welcome();
 
         while self.running {
@@ -205,6 +240,11 @@ impl KaidoShell {
             }
         }
 
+        // End learning session
+        if let Some(ref mut tracker) = self.learning_tracker {
+            let _ = tracker.end_session();
+        }
+
         // Save history
         self.save_history()?;
 
@@ -239,6 +279,10 @@ impl KaidoShell {
                 };
                 println!("\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1m{}\x1b[0m", level);
                 println!("  Use 'verbose', 'normal', or 'compact' to change.");
+                return true;
+            }
+            "progress" | "/progress" => {
+                self.display_progress();
                 return true;
             }
             _ => {}
@@ -341,6 +385,10 @@ impl KaidoShell {
         println!("  \x1b[1mnormal\x1b[0m            Key points only (default)");
         println!("  \x1b[1mcompact\x1b[0m           One-liner for experts");
         println!();
+        println!("\x1b[1;36mLearning Progress\x1b[0m");
+        println!();
+        println!("  \x1b[1mprogress\x1b[0m          Show your learning progress");
+        println!();
         println!("\x1b[2mAll other commands are executed in the system shell.\x1b[0m");
         println!("\x1b[2mWhen errors occur, I'll help you understand them.\x1b[0m");
         println!();
@@ -352,6 +400,65 @@ impl KaidoShell {
         for (i, entry) in self.editor.history().iter().enumerate() {
             println!("  {:4}  {}", i + 1, entry);
         }
+        println!();
+    }
+
+    /// Display learning progress
+    fn display_progress(&self) {
+        println!();
+
+        let progress = match &self.learning_tracker {
+            Some(tracker) => match tracker.get_progress() {
+                Ok(p) => p,
+                Err(_) => {
+                    println!("\x1b[33mUnable to load learning progress.\x1b[0m");
+                    println!();
+                    return;
+                }
+            },
+            None => {
+                println!("\x1b[33mLearning tracker not available.\x1b[0m");
+                println!();
+                return;
+            }
+        };
+
+        let resolution_pct = (progress.resolution_rate * 100.0) as u32;
+
+        println!("\x1b[1;36m┌─ Your Learning Progress ─────────────────────────────────────┐\x1b[0m");
+        println!("\x1b[36m│\x1b[0m                                                               \x1b[36m│\x1b[0m");
+        println!(
+            "\x1b[36m│\x1b[0m  Total errors encountered: \x1b[1m{:<5}\x1b[0m                              \x1b[36m│\x1b[0m",
+            progress.total_errors
+        );
+        println!(
+            "\x1b[36m│\x1b[0m  Resolution rate: \x1b[1m{}%\x1b[0m                                         \x1b[36m│\x1b[0m",
+            resolution_pct
+        );
+        println!("\x1b[36m│\x1b[0m                                                               \x1b[36m│\x1b[0m");
+
+        if !progress.common_errors.is_empty() {
+            println!("\x1b[36m│\x1b[0m  \x1b[1mMost common errors:\x1b[0m                                        \x1b[36m│\x1b[0m");
+            for (i, (error_type, count)) in progress.common_errors.iter().take(3).enumerate() {
+                println!(
+                    "\x1b[36m│\x1b[0m    {}. {} ({} times)                             \x1b[36m│\x1b[0m",
+                    i + 1,
+                    error_type,
+                    count
+                );
+            }
+            println!("\x1b[36m│\x1b[0m                                                               \x1b[36m│\x1b[0m");
+        }
+
+        if !progress.concepts.is_empty() {
+            println!("\x1b[36m│\x1b[0m  \x1b[1mConcepts encountered:\x1b[0m                                       \x1b[36m│\x1b[0m");
+            for concept in progress.concepts.iter().take(5) {
+                println!("\x1b[36m│\x1b[0m    \x1b[32m✓\x1b[0m {}                                              \x1b[36m│\x1b[0m", concept);
+            }
+            println!("\x1b[36m│\x1b[0m                                                               \x1b[36m│\x1b[0m");
+        }
+
+        println!("\x1b[1;36m└───────────────────────────────────────────────────────────────┘\x1b[0m");
         println!();
     }
 
@@ -369,8 +476,39 @@ impl KaidoShell {
             }
         }
 
+        // Check if previous error was resolved (successful similar command)
+        if result.exit_code == Some(0) {
+            if let Some(tracked) = self.tracked_error.take() {
+                if LearningTracker::is_similar_command(command, &tracked.command) {
+                    // Error was resolved!
+                    let resolution_time = tracked.timestamp.elapsed();
+                    if let Some(ref tracker) = self.learning_tracker {
+                        let _ = tracker.mark_resolved(tracked.id, resolution_time);
+                    }
+                }
+            }
+        }
+
         // Analyze for errors using the mentor system
         if let Some(error_info) = self.error_detector.analyze(&result) {
+            // Record error in learning tracker
+            if let Some(ref tracker) = self.learning_tracker {
+                if let Ok(error_id) = tracker.record_error(
+                    &error_info.error_type,
+                    &error_info.key_message,
+                    command,
+                    result.exit_code,
+                    Some(&result.output),
+                ) {
+                    // Track this error for resolution detection
+                    self.tracked_error = Some(TrackedError {
+                        id: error_id,
+                        command: command.to_string(),
+                        timestamp: Instant::now(),
+                    });
+                }
+            }
+
             // Display mentor guidance
             self.display_mentor_block(&error_info);
             self.last_error = Some(error_info);
