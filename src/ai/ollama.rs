@@ -83,6 +83,111 @@ impl OllamaBackend {
     pub fn model_name(&self) -> &str {
         &self.config.model
     }
+
+    /// Get Ollama server status including version and available models
+    pub async fn get_status(&self) -> Result<OllamaStatus> {
+        let available = self.is_available().await;
+        if !available {
+            return Ok(OllamaStatus {
+                available: false,
+                version: None,
+                models: vec![],
+                recommended_model: None,
+            });
+        }
+
+        let models = self.list_models().await.unwrap_or_default();
+        let recommended = Self::recommend_model(&models);
+
+        Ok(OllamaStatus {
+            available: true,
+            version: None, // Could add version endpoint if needed
+            models,
+            recommended_model: recommended,
+        })
+    }
+
+    /// Recommend a model based on available models
+    /// Prioritizes: codestral > qwen2.5 > llama3.2 > mistral > others
+    pub fn recommend_model(available_models: &[String]) -> Option<String> {
+        // Priority order for model recommendations
+        let priority = [
+            ("codestral", "Best for code understanding"),
+            ("qwen2.5:14b", "Excellent balance of speed and accuracy"),
+            ("qwen2.5:7b", "Good balance for most systems"),
+            ("qwen2.5", "Balanced performance"),
+            ("llama3.2:3b", "Fast, good for basic tasks"),
+            ("llama3.2", "Fast, good for basic tasks"),
+            ("mistral", "Good general purpose"),
+        ];
+
+        for (model_prefix, _) in priority {
+            for available in available_models {
+                if available.starts_with(model_prefix) {
+                    return Some(available.clone());
+                }
+            }
+        }
+
+        // Return first available model if none match priority
+        available_models.first().cloned()
+    }
+
+    /// Get model recommendations based on system capabilities
+    pub fn get_model_recommendations() -> Vec<ModelRecommendation> {
+        vec![
+            ModelRecommendation {
+                model: "llama3.2:3b".to_string(),
+                size_gb: 2.0,
+                description: "Fast, basic diagnosis. Good for older hardware.".to_string(),
+                min_ram_gb: 4,
+            },
+            ModelRecommendation {
+                model: "qwen2.5:7b".to_string(),
+                size_gb: 4.5,
+                description: "Balanced performance. Recommended for most users.".to_string(),
+                min_ram_gb: 8,
+            },
+            ModelRecommendation {
+                model: "qwen2.5:14b".to_string(),
+                size_gb: 9.0,
+                description: "Higher accuracy. Good for complex errors.".to_string(),
+                min_ram_gb: 16,
+            },
+            ModelRecommendation {
+                model: "codestral:22b".to_string(),
+                size_gb: 12.0,
+                description: "Best accuracy for code and DevOps. Requires good GPU.".to_string(),
+                min_ram_gb: 24,
+            },
+        ]
+    }
+}
+
+/// Ollama server status
+#[derive(Debug, Clone)]
+pub struct OllamaStatus {
+    /// Whether Ollama is running and accessible
+    pub available: bool,
+    /// Ollama version (if available)
+    pub version: Option<String>,
+    /// List of installed models
+    pub models: Vec<String>,
+    /// Recommended model from available ones
+    pub recommended_model: Option<String>,
+}
+
+/// Model recommendation with system requirements
+#[derive(Debug, Clone)]
+pub struct ModelRecommendation {
+    /// Model name
+    pub model: String,
+    /// Approximate size in GB
+    pub size_gb: f32,
+    /// Description of use case
+    pub description: String,
+    /// Minimum recommended RAM in GB
+    pub min_ram_gb: u32,
 }
 
 #[async_trait]
@@ -209,5 +314,56 @@ mod tests {
         let backend = OllamaBackend::new();
         assert_eq!(backend.config.base_url, "http://localhost:11434");
         assert_eq!(backend.config.model, "llama3.2");
+    }
+
+    #[test]
+    fn test_recommend_model_priority() {
+        // Should prefer codestral over others
+        let models = vec![
+            "llama3.2:3b".to_string(),
+            "codestral:22b".to_string(),
+            "qwen2.5:7b".to_string(),
+        ];
+        assert_eq!(
+            OllamaBackend::recommend_model(&models),
+            Some("codestral:22b".to_string())
+        );
+
+        // Should prefer qwen2.5:14b over smaller versions
+        let models = vec![
+            "llama3.2:3b".to_string(),
+            "qwen2.5:14b".to_string(),
+            "qwen2.5:7b".to_string(),
+        ];
+        assert_eq!(
+            OllamaBackend::recommend_model(&models),
+            Some("qwen2.5:14b".to_string())
+        );
+
+        // Should return first if no priority match
+        let models = vec!["phi:latest".to_string(), "custom:v1".to_string()];
+        assert_eq!(
+            OllamaBackend::recommend_model(&models),
+            Some("phi:latest".to_string())
+        );
+
+        // Empty list returns None
+        let models: Vec<String> = vec![];
+        assert_eq!(OllamaBackend::recommend_model(&models), None);
+    }
+
+    #[test]
+    fn test_model_recommendations() {
+        let recommendations = OllamaBackend::get_model_recommendations();
+        assert!(!recommendations.is_empty());
+
+        // Check first recommendation (smallest model)
+        assert_eq!(recommendations[0].model, "llama3.2:3b");
+        assert!(recommendations[0].min_ram_gb <= 4);
+
+        // Check recommendations are in order of size
+        for i in 1..recommendations.len() {
+            assert!(recommendations[i].size_gb >= recommendations[i - 1].size_gb);
+        }
     }
 }

@@ -3,7 +3,7 @@ pub mod ollama;
 pub mod explainer;
 
 pub use gemini::GeminiBackend;
-pub use ollama::OllamaBackend;
+pub use ollama::{ModelRecommendation, OllamaBackend, OllamaStatus};
 pub use explainer::CommandExplainer;
 
 use anyhow::Result;
