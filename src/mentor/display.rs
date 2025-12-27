@@ -4,6 +4,7 @@
 // proper terminal styling and adaptive width.
 
 use super::colors::MentorColors;
+use super::guidance::MentorGuidance;
 use super::types::ErrorInfo;
 
 /// Verbosity level for mentor display
@@ -70,6 +71,229 @@ impl MentorDisplay {
             Verbosity::Normal => self.render_normal(error),
             Verbosity::Compact => self.render_compact(error),
         }
+    }
+
+    /// Render MentorGuidance as formatted string
+    pub fn render_guidance(&self, guidance: &MentorGuidance) -> String {
+        match self.config.verbosity {
+            Verbosity::Verbose => self.render_guidance_verbose(guidance),
+            Verbosity::Normal => self.render_guidance_normal(guidance),
+            Verbosity::Compact => self.render_guidance_compact(guidance),
+        }
+    }
+
+    /// Render compact guidance
+    fn render_guidance_compact(&self, guidance: &MentorGuidance) -> String {
+        let c = &self.colors;
+        let width = self.box_width().min(60);
+        let inner_width = width - 4;
+
+        let key_msg = Self::truncate(&guidance.key_message, inner_width - 4);
+
+        let mut output = String::new();
+        output.push_str(&format!(
+            "{}┌─ MENTOR {}┐{}\n",
+            c.border(),
+            "─".repeat(width - 12),
+            c.reset()
+        ));
+        output.push_str(&format!(
+            "{}│{} {}{} {}│{}\n",
+            c.border(),
+            c.key_message(),
+            key_msg,
+            c.reset(),
+            " ".repeat(inner_width.saturating_sub(key_msg.len())),
+            c.reset()
+        ));
+        output.push_str(&format!(
+            "{}└{}┘{}",
+            c.border(),
+            "─".repeat(width - 2),
+            c.reset()
+        ));
+
+        output
+    }
+
+    /// Render normal guidance
+    fn render_guidance_normal(&self, guidance: &MentorGuidance) -> String {
+        let c = &self.colors;
+        let width = self.box_width();
+        let inner_width = width - 4;
+
+        let mut output = String::new();
+
+        // Top border
+        output.push_str(&format!(
+            "\n{}┌─ {}MENTOR{} {}┐{}\n",
+            c.border(),
+            c.title(),
+            c.border(),
+            "─".repeat(width - 12),
+            c.reset()
+        ));
+
+        output.push_str(&self.render_empty_line(width));
+
+        // Key message
+        let key_display = Self::truncate(&guidance.key_message, inner_width - 10);
+        output.push_str(&self.render_line(
+            width,
+            &format!(
+                "  {}Key:{} {}{}{}",
+                c.error_type(),
+                c.reset(),
+                c.key_message(),
+                key_display,
+                c.reset()
+            ),
+        ));
+
+        output.push_str(&self.render_empty_line(width));
+
+        // Explanation (wrapped)
+        for line in Self::wrap_text(&guidance.explanation, inner_width - 4) {
+            output.push_str(&self.render_line(width, &format!("  {}", line)));
+        }
+
+        output.push_str(&self.render_empty_line(width));
+
+        // First next step if available
+        if let Some(step) = guidance.next_steps.first() {
+            let step_text = if let Some(ref cmd) = step.command {
+                format!("Try: {}{}{}", c.command(), cmd, c.reset())
+            } else {
+                format!("Try: {}", step.description)
+            };
+            output.push_str(&self.render_line(
+                width,
+                &format!("  {}{}{}", c.search(), step_text, c.reset()),
+            ));
+            output.push_str(&self.render_empty_line(width));
+        }
+
+        // Bottom border
+        output.push_str(&format!(
+            "{}└{}┘{}\n",
+            c.border(),
+            "─".repeat(width - 2),
+            c.reset()
+        ));
+
+        output
+    }
+
+    /// Render verbose guidance
+    fn render_guidance_verbose(&self, guidance: &MentorGuidance) -> String {
+        let c = &self.colors;
+        let width = self.box_width();
+        let inner_width = width - 4;
+
+        let mut output = String::new();
+
+        // Top border
+        output.push_str(&format!(
+            "\n{}┌─ {}MENTOR{} {}┐{}\n",
+            c.border(),
+            c.title(),
+            c.border(),
+            "─".repeat(width - 12),
+            c.reset()
+        ));
+
+        output.push_str(&self.render_empty_line(width));
+
+        // Key message with underline
+        let key_display = Self::truncate(&guidance.key_message, inner_width - 10);
+        output.push_str(&self.render_line(
+            width,
+            &format!(
+                "  {}Key:{} \"{}{}{}\"",
+                c.error_type(),
+                c.reset(),
+                c.key_message(),
+                key_display,
+                c.reset()
+            ),
+        ));
+
+        let underline_len = key_display.len().min(inner_width - 12);
+        output.push_str(&self.render_line(
+            width,
+            &format!("       {}{}{}", c.dim(), "~".repeat(underline_len), c.reset()),
+        ));
+
+        output.push_str(&self.render_empty_line(width));
+
+        // Explanation
+        output.push_str(&self.render_line(
+            width,
+            &format!("  {}This means:{}", c.dim(), c.reset()),
+        ));
+        for line in Self::wrap_text(&guidance.explanation, inner_width - 6) {
+            output.push_str(&self.render_line(width, &format!("    {}", line)));
+        }
+
+        output.push_str(&self.render_empty_line(width));
+
+        // Search keywords
+        if !guidance.search_keywords.is_empty() {
+            let keywords = guidance.search_keywords.join(", ");
+            output.push_str(&self.render_line(
+                width,
+                &format!("  {}Search:{} {}", c.search(), c.reset(), keywords),
+            ));
+            output.push_str(&self.render_empty_line(width));
+        }
+
+        // Next steps
+        if !guidance.next_steps.is_empty() {
+            output.push_str(&self.render_line(
+                width,
+                &format!("  {}Next steps:{}", c.dim(), c.reset()),
+            ));
+            for (i, step) in guidance.next_steps.iter().take(4).enumerate() {
+                let step_text = if let Some(ref cmd) = step.command {
+                    format!("{}{}{}", c.command(), cmd, c.reset())
+                } else {
+                    step.description.clone()
+                };
+                let display = Self::truncate(&step_text, inner_width - 8);
+                output.push_str(&self.render_line(
+                    width,
+                    &format!("    {}{}. {}{}", c.dim(), i + 1, c.reset(), display),
+                ));
+            }
+            output.push_str(&self.render_empty_line(width));
+        }
+
+        // Related concepts
+        if !guidance.related_concepts.is_empty() {
+            let concepts = guidance.related_concepts.join(", ");
+            output.push_str(&self.render_line(
+                width,
+                &format!(
+                    "  {}Learn more:{} {}{}{}",
+                    c.concept(),
+                    c.reset(),
+                    c.concept(),
+                    concepts,
+                    c.reset()
+                ),
+            ));
+            output.push_str(&self.render_empty_line(width));
+        }
+
+        // Bottom border
+        output.push_str(&format!(
+            "{}└{}┘{}\n",
+            c.border(),
+            "─".repeat(width - 2),
+            c.reset()
+        ));
+
+        output
     }
 
     /// Get the box width based on terminal width
