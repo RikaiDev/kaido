@@ -426,25 +426,33 @@ Generate commands accordingly. Return ONLY the JSON object."#
 #[async_trait]
 impl LLMBackend for AIManager {
     async fn infer(&self, prompt: &str) -> Result<LLMResponse> {
-        // Try local GGUF model first
-        log::info!("AIManager: Attempting local GGUF model inference");
-        
-        match self.interpret_with_local_model(prompt).await {
-            Ok(output) => {
-                log::info!("[OK] Local GGUF model inference successful");
-                // Parse output to extract command if possible
-                let command = output.lines().next().unwrap_or("").to_string();
-                Ok(LLMResponse {
-                    command: command.clone(),
-                    confidence: 75,
-                    reasoning: output,
-                })
+        // Try Gemini API first (faster, more capable for explanations)
+        log::info!("AIManager: Attempting Gemini API inference");
+
+        match self.gemini.infer(prompt).await {
+            Ok(response) => {
+                log::info!("[OK] Gemini API inference successful");
+                Ok(response)
             }
             Err(e) => {
-                log::warn!("Local GGUF model failed: {}, falling back to Gemini API", e);
-                
-                // Fallback to Gemini
-                self.gemini.infer(prompt).await
+                log::warn!("Gemini API failed: {}, falling back to local GGUF model", e);
+
+                // Fallback to local GGUF model
+                match self.interpret_with_local_model(prompt).await {
+                    Ok(output) => {
+                        log::info!("[OK] Local GGUF model inference successful");
+                        let command = output.lines().next().unwrap_or("").to_string();
+                        Ok(LLMResponse {
+                            command: command.clone(),
+                            confidence: 75,
+                            reasoning: output,
+                        })
+                    }
+                    Err(local_e) => {
+                        log::error!("Both Gemini and local model failed");
+                        Err(anyhow::anyhow!("All AI backends failed: Gemini: {}, Local: {}", e, local_e))
+                    }
+                }
             }
         }
     }

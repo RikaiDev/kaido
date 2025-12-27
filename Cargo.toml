@@ -32,6 +32,7 @@ serde_yaml = "0.9"
 # Configuration
 toml = "0.8"
 dirs = "5.0"
+dotenvy = "0.15"
 
 # Internationalization
 fluent = "0.16"
