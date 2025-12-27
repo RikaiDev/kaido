@@ -257,6 +257,7 @@ impl Default for VerbosityMode {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
 
     fn create_test_progress(
         total_errors: u32,
