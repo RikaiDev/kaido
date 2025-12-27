@@ -1,7 +1,11 @@
-// Kaido Shell - Interactive mentor shell
+// Kaido Shell - AI-Native Interactive Shell
 //
-// A shell wrapper that executes commands via PTY and provides
-// mentorship when errors occur.
+// A truly AI-powered shell that:
+// - Uses LLM for contextual error explanations
+// - Provides AI-driven command suggestions
+// - Learns and adapts to user skill level
+//
+// The AI is not just a fallback - it's the primary intelligence.
 
 use anyhow::{Context, Result};
 use rustyline::error::ReadlineError;
@@ -14,8 +18,11 @@ use super::builtins::{execute_builtin, parse_builtin, Builtin, BuiltinResult, Sh
 use super::history::{ensure_history_dir, HistoryConfig};
 use super::prompt::PromptBuilder;
 use super::pty::{PtyExecutionResult, PtyExecutor};
+use crate::ai::AIManager;
+use crate::config::Config as KaidoConfig;
 use crate::learning::{LearningTracker, SessionStats, SkillDetector, SummaryGenerator, VerbosityMode};
 use crate::mentor::{ErrorDetector, ErrorInfo, MentorDisplay, Verbosity};
+use crate::tools::LLMBackend;
 
 /// Kaido shell configuration
 #[derive(Debug, Clone)]
@@ -32,6 +39,10 @@ pub struct ShellConfig {
     pub mentor_verbosity: Verbosity,
     /// Verbosity mode (auto or fixed)
     pub verbosity_mode: VerbosityMode,
+    /// Enable AI-powered explanations (true = AI, false = pattern-based)
+    pub ai_enabled: bool,
+    /// Show AI suggestions after commands
+    pub show_suggestions: bool,
 }
 
 impl Default for ShellConfig {
@@ -43,6 +54,8 @@ impl Default for ShellConfig {
             shell: None,
             mentor_verbosity: Verbosity::Normal,
             verbosity_mode: VerbosityMode::Auto,
+            ai_enabled: true,  // AI-native by default
+            show_suggestions: true,
         }
     }
 }
@@ -58,7 +71,7 @@ struct TrackedError {
     timestamp: Instant,
 }
 
-/// The main Kaido shell
+/// The main Kaido shell - AI-Native
 pub struct KaidoShell {
     /// Configuration
     config: ShellConfig,
@@ -70,10 +83,12 @@ pub struct KaidoShell {
     prompt_builder: PromptBuilder,
     /// Shell environment (variables, aliases, previous dir)
     shell_env: ShellEnvironment,
-    /// Error detector for mentor system
+    /// Error detector for mentor system (fast-path pattern matching)
     error_detector: ErrorDetector,
-    /// Mentor display for formatting guidance
+    /// Mentor display for formatting guidance (fallback)
     mentor_display: MentorDisplay,
+    /// AI Manager for LLM-powered explanations
+    ai_manager: AIManager,
     /// Learning tracker for progress
     learning_tracker: Option<LearningTracker>,
     /// Skill detector for adaptive verbosity
@@ -88,6 +103,8 @@ pub struct KaidoShell {
     last_error: Option<ErrorInfo>,
     /// Tracked error for resolution detection
     tracked_error: Option<TrackedError>,
+    /// Command history for context (last N commands)
+    command_history: Vec<String>,
 }
 
 impl KaidoShell {
@@ -136,13 +153,17 @@ impl KaidoShell {
             prompt_builder = prompt_builder.no_git_branch();
         }
 
-        // Create mentor display with config
+        // Create mentor display with config (fallback for when AI is unavailable)
         let mentor_display_config = crate::mentor::DisplayConfig {
             verbosity: config.mentor_verbosity,
             terminal_width: 0, // Auto-detect
             colors_enabled: config.use_colors,
         };
         let mentor_display = MentorDisplay::with_config(mentor_display_config);
+
+        // Create AI Manager for LLM-powered explanations
+        let kaido_config = KaidoConfig::load().unwrap_or_default();
+        let ai_manager = AIManager::new(kaido_config);
 
         // Try to create learning tracker (non-fatal if it fails)
         let learning_tracker = match LearningTracker::with_default_path() {
@@ -161,6 +182,7 @@ impl KaidoShell {
             shell_env: ShellEnvironment::new(),
             error_detector: ErrorDetector::new(),
             mentor_display,
+            ai_manager,
             learning_tracker,
             skill_detector: SkillDetector::new(),
             session_stats: SessionStats::new(),
@@ -168,6 +190,7 @@ impl KaidoShell {
             last_result: None,
             last_error: None,
             tracked_error: None,
+            command_history: Vec::with_capacity(10),
         })
     }
 
@@ -190,10 +213,17 @@ impl KaidoShell {
             "\x1b[1;36m |_|\\_\\__,_|_|\\__,_|\\___/ \x1b[0m"
         );
         println!();
-        println!("\x1b[1mYour AI Ops Mentor\x1b[0m - Learn by doing, with guidance when you need it.");
+        println!("\x1b[1mAI-Native Shell\x1b[0m - Your intelligent ops companion.");
         println!();
-        println!("\x1b[2mType commands normally. When errors occur, I'll help you understand them.\x1b[0m");
-        println!("\x1b[2mType 'exit' or press Ctrl+D to quit.\x1b[0m");
+        let ai_status = if self.config.ai_enabled {
+            "\x1b[38;5;147m◆ AI Mode: ON\x1b[0m - LLM-powered explanations enabled"
+        } else {
+            "\x1b[2m◆ AI Mode: OFF\x1b[0m - Using pattern-based fallback"
+        };
+        println!("{}", ai_status);
+        println!();
+        println!("\x1b[2mType commands normally. AI will explain errors and suggest next steps.\x1b[0m");
+        println!("\x1b[2mType 'help' for commands, 'ai' for AI settings, 'exit' to quit.\x1b[0m");
         println!();
     }
 
@@ -319,6 +349,34 @@ impl KaidoShell {
                 self.update_auto_verbosity();
                 return true;
             }
+            "ai" | "ai status" => {
+                let status = if self.config.ai_enabled { "ON" } else { "OFF" };
+                let suggestions = if self.config.show_suggestions { "ON" } else { "OFF" };
+                println!("\x1b[38;5;147m◆\x1b[0m AI Mode: \x1b[1m{}\x1b[0m", status);
+                println!("  Suggestions: \x1b[1m{}\x1b[0m", suggestions);
+                println!("  Use 'ai on/off' or 'ai suggestions on/off' to change.");
+                return true;
+            }
+            "ai on" => {
+                self.config.ai_enabled = true;
+                println!("\x1b[38;5;147m◆\x1b[0m AI Mode: \x1b[1mON\x1b[0m (LLM-powered explanations)");
+                return true;
+            }
+            "ai off" => {
+                self.config.ai_enabled = false;
+                println!("\x1b[38;5;147m◆\x1b[0m AI Mode: \x1b[1mOFF\x1b[0m (pattern-based fallback)");
+                return true;
+            }
+            "ai suggestions on" => {
+                self.config.show_suggestions = true;
+                println!("\x1b[38;5;147m◆\x1b[0m AI Suggestions: \x1b[1mON\x1b[0m");
+                return true;
+            }
+            "ai suggestions off" => {
+                self.config.show_suggestions = false;
+                println!("\x1b[38;5;147m◆\x1b[0m AI Suggestions: \x1b[1mOFF\x1b[0m");
+                return true;
+            }
             _ => {}
         }
 
@@ -425,8 +483,16 @@ impl KaidoShell {
         println!("  \x1b[1mprogress\x1b[0m          Show your learning progress");
         println!("  \x1b[1mskill\x1b[0m             Show your skill assessment");
         println!();
+        println!("\x1b[1;38;5;147mAI Mode\x1b[0m");
+        println!();
+        println!("  \x1b[1mai\x1b[0m                Show AI status");
+        println!("  \x1b[1mai on\x1b[0m             Enable AI-powered explanations");
+        println!("  \x1b[1mai off\x1b[0m            Use pattern-based fallback");
+        println!("  \x1b[1mai suggestions on\x1b[0m Enable next-step suggestions");
+        println!("  \x1b[1mai suggestions off\x1b[0m Disable suggestions");
+        println!();
         println!("\x1b[2mAll other commands are executed in the system shell.\x1b[0m");
-        println!("\x1b[2mWhen errors occur, I'll help you understand them.\x1b[0m");
+        println!("\x1b[2mWhen errors occur, AI will help you understand them.\x1b[0m");
         println!();
     }
 
@@ -578,10 +644,11 @@ impl KaidoShell {
         }
     }
 
-    /// Execute a command via PTY
+    /// Execute a command via PTY (AI-native)
     async fn execute_command(&mut self, command: &str) -> Result<()> {
-        // Track command in session stats
+        // Track command in session stats and history
         self.session_stats.record_command(command);
+        self.add_to_command_history(command);
 
         let result = self.pty.execute(command).await
             .context("Failed to execute command")?;
@@ -606,11 +673,16 @@ impl KaidoShell {
                     }
                     // Track resolution in session stats
                     self.session_stats.record_resolution();
+
+                    // Celebrate with AI suggestion for next steps
+                    if self.config.ai_enabled && self.config.show_suggestions {
+                        self.display_success_suggestion(command).await;
+                    }
                 }
             }
         }
 
-        // Analyze for errors using the mentor system
+        // Analyze for errors using pattern matching (fast-path)
         if let Some(error_info) = self.error_detector.analyze(&result) {
             // Record error in learning tracker
             if let Some(ref tracker) = self.learning_tracker {
@@ -633,8 +705,13 @@ impl KaidoShell {
             // Track error in session stats
             self.session_stats.record_error(error_info.error_type.name());
 
-            // Display mentor guidance
-            self.display_mentor_block(&error_info);
+            // Display AI-powered guidance (or fallback to pattern-based)
+            if self.config.ai_enabled {
+                self.display_ai_guidance(command, &result, &error_info).await;
+            } else {
+                self.display_mentor_block(&error_info);
+            }
+
             self.last_error = Some(error_info);
             self.last_result = Some(result);
         } else {
@@ -645,7 +722,125 @@ impl KaidoShell {
         Ok(())
     }
 
-    /// Display mentor guidance for detected errors
+    /// Add command to history for AI context
+    fn add_to_command_history(&mut self, command: &str) {
+        self.command_history.push(command.to_string());
+        // Keep only last 10 commands for context
+        if self.command_history.len() > 10 {
+            self.command_history.remove(0);
+        }
+    }
+
+    /// Display AI-powered guidance for errors
+    async fn display_ai_guidance(&self, command: &str, result: &PtyExecutionResult, error_info: &ErrorInfo) {
+        // Build context for AI
+        let prompt = self.build_error_explanation_prompt(command, result, error_info);
+
+        // Show thinking indicator
+        print!("\x1b[38;5;147m◆ AI analyzing...\x1b[0m ");
+        use std::io::Write;
+        std::io::stdout().flush().ok();
+
+        // Call AI for explanation
+        match self.ai_manager.infer(&prompt).await {
+            Ok(response) => {
+                // Clear the "analyzing" line
+                print!("\r\x1b[K");
+
+                // Display AI explanation
+                println!();
+                println!("\x1b[38;5;147m┌─ AI MENTOR ────────────────────────────────────────────────┐\x1b[0m");
+                println!("\x1b[38;5;147m│\x1b[0m                                                              \x1b[38;5;147m│\x1b[0m");
+
+                // Format and display the explanation (wrap lines)
+                for line in response.reasoning.lines().take(12) {
+                    let truncated = if line.len() > 58 {
+                        format!("{}...", &line[..55])
+                    } else {
+                        line.to_string()
+                    };
+                    println!("\x1b[38;5;147m│\x1b[0m  {:<56}  \x1b[38;5;147m│\x1b[0m", truncated);
+                }
+
+                println!("\x1b[38;5;147m│\x1b[0m                                                              \x1b[38;5;147m│\x1b[0m");
+                println!("\x1b[38;5;147m└──────────────────────────────────────────────────────────────┘\x1b[0m");
+                println!();
+            }
+            Err(e) => {
+                // Clear the "analyzing" line and fallback to pattern-based
+                print!("\r\x1b[K");
+                log::debug!("AI explanation failed, using fallback: {}", e);
+                self.display_mentor_block(error_info);
+            }
+        }
+    }
+
+    /// Build prompt for AI error explanation
+    fn build_error_explanation_prompt(&self, command: &str, result: &PtyExecutionResult, error_info: &ErrorInfo) -> String {
+        let recent_commands = self.command_history.iter()
+            .rev()
+            .take(5)
+            .rev()
+            .cloned()
+            .collect::<Vec<_>>()
+            .join("\n  ");
+
+        let output_preview = if result.output.len() > 500 {
+            format!("{}...(truncated)", &result.output[..500])
+        } else {
+            result.output.clone()
+        };
+
+        format!(
+            r#"You are an AI ops mentor helping a user understand a command error.
+
+COMMAND: {command}
+EXIT CODE: {exit_code}
+ERROR TYPE: {error_type}
+
+OUTPUT:
+{output}
+
+RECENT COMMANDS:
+  {recent_commands}
+
+Explain this error in a helpful, educational way:
+1. What went wrong (1-2 sentences)
+2. Why this happened (the root cause)
+3. How to fix it (specific command or action)
+4. Pro tip (something to remember for next time)
+
+Keep your response concise (under 10 lines). Be friendly and encouraging.
+Do NOT use markdown formatting. Use plain text only."#,
+            command = command,
+            exit_code = result.exit_code.map(|c| c.to_string()).unwrap_or_else(|| "unknown".to_string()),
+            error_type = error_info.error_type.name(),
+            output = output_preview,
+            recent_commands = recent_commands,
+        )
+    }
+
+    /// Display success suggestion after resolving an error
+    async fn display_success_suggestion(&self, command: &str) {
+        let prompt = format!(
+            r#"The user just successfully ran: {command}
+
+This resolved a previous error. Suggest ONE helpful next step they might want to try.
+Keep it to a single short sentence. Be encouraging.
+Do NOT use markdown. Plain text only."#,
+            command = command
+        );
+
+        if let Ok(response) = self.ai_manager.infer(&prompt).await {
+            let suggestion = response.reasoning.lines().next().unwrap_or("");
+            if !suggestion.is_empty() {
+                println!("\x1b[38;5;150m✓ Nice! {}\x1b[0m", suggestion.trim());
+                println!();
+            }
+        }
+    }
+
+    /// Display mentor guidance for detected errors (fallback, pattern-based)
     fn display_mentor_block(&self, error: &ErrorInfo) {
         let output = self.mentor_display.render(error);
         print!("{}", output);
