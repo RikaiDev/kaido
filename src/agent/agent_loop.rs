@@ -30,21 +30,25 @@ pub enum StepType {
 pub struct AgentStep {
     /// Step number (1-indexed)
     pub step_number: usize,
-    
+
     /// Type of this step
     pub step_type: StepType,
-    
+
     /// Content of this step (thought, command, observation, etc.)
     pub content: String,
-    
+
     /// Tool used (if Action step)
     pub tool_used: Option<String>,
-    
+
     /// Success status (for Action/Observation)
     pub success: Option<bool>,
-    
+
     /// Timestamp
     pub timestamp: std::time::SystemTime,
+
+    /// Educational explanation of the command (for explain mode)
+    #[serde(default)]
+    pub explanation: Option<String>,
 }
 
 /// Status of agent execution
@@ -117,8 +121,16 @@ impl AgentState {
             tool_used,
             success,
             timestamp: std::time::SystemTime::now(),
+            explanation: None,
         };
         self.history.push(step);
+    }
+
+    /// Set explanation on the last step (for explain mode)
+    pub fn set_last_step_explanation(&mut self, explanation: String) {
+        if let Some(last_step) = self.history.last_mut() {
+            last_step.explanation = Some(explanation);
+        }
     }
     
     /// Check if should continue execution
@@ -168,16 +180,19 @@ impl AgentState {
 pub struct AgentLoop {
     /// Current state
     state: AgentState,
-    
+
     /// Tool context for execution (reserved for future use)
     #[allow(dead_code)]
     context: ToolContext,
-    
+
     /// Tool registry for executing commands
     tool_registry: crate::tools::ToolRegistry,
-    
+
     /// Callback for displaying progress (optional)
     progress_callback: Option<Box<dyn Fn(&AgentStep) + Send>>,
+
+    /// Enable explain mode for educational command breakdowns
+    explain_mode: bool,
 }
 
 impl AgentLoop {
@@ -188,7 +203,14 @@ impl AgentLoop {
             context,
             tool_registry: crate::tools::ToolRegistry::new(),
             progress_callback: None,
+            explain_mode: true, // Default ON for learning
         }
+    }
+
+    /// Enable or disable explain mode
+    pub fn with_explain_mode(mut self, enabled: bool) -> Self {
+        self.explain_mode = enabled;
+        self
     }
     
     /// Set progress callback for live updates
@@ -239,7 +261,24 @@ impl AgentLoop {
         // 3. Action - Extract and validate action
         let action = self.parse_action_from_thought(&thought)?;
         self.add_and_notify_step(StepType::Action, action.command.clone(), Some(action.tool_name.clone()), None);
-        
+
+        // 3.5. Generate educational explanation if explain mode is enabled
+        if self.explain_mode {
+            if let Ok(explanation) = crate::ai::CommandExplainer::explain(
+                &action.command,
+                &action.tool_name,
+                llm,
+            ).await {
+                self.state.set_last_step_explanation(explanation);
+                // Re-notify with updated explanation
+                if let Some(ref callback) = self.progress_callback {
+                    if let Some(last_step) = self.state.history.last() {
+                        callback(last_step);
+                    }
+                }
+            }
+        }
+
         // 4. Execute action (auto-execute if diagnostic, else may need confirmation)
         let execution_result = self.execute_action(&action).await?;
         

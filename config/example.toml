@@ -53,6 +53,11 @@ show_confidence_threshold = 70
 # Show detailed reasoning for low-confidence translations
 show_reasoning = true
 
+# Enable explain mode for educational command breakdowns
+# When ON, Kaido shows "WHAT YOU'RE LEARNING" blocks after each command
+# explaining what each flag/argument does - great for learning ops!
+explain_mode = true
+
 # =============================================================================
 # Advanced Options (Optional)
 # =============================================================================

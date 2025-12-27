@@ -12,6 +12,7 @@ pub struct KaidoREPL {
     ai_manager: AIManager,
     tool_context: ToolContext,
     audit_logger: Option<AgentAuditLogger>,
+    config: Config,
 }
 
 impl KaidoREPL {
@@ -21,10 +22,10 @@ impl KaidoREPL {
             log::warn!("Failed to load config, using defaults");
             Config::default()
         });
-        
-        let ai_manager = AIManager::new(config);
+
+        let ai_manager = AIManager::new(config.clone());
         let tool_context = ToolContext::default();
-        
+
         // Initialize audit logger
         let audit_logger = match Self::init_audit_logger() {
             Ok(logger) => {
@@ -36,11 +37,12 @@ impl KaidoREPL {
                 None
             }
         };
-        
+
         Ok(Self {
             ai_manager,
             tool_context,
             audit_logger,
+            config,
         })
     }
     
@@ -86,6 +88,28 @@ impl KaidoREPL {
                     self.print_help();
                     continue;
                 }
+                "explain on" => {
+                    self.config.display.explain_mode = true;
+                    println!("\x1b[38;5;150m◆\x1b[0m Explain mode: \x1b[38;5;150mON\x1b[0m");
+                    println!("  Commands will now include educational breakdowns.");
+                    continue;
+                }
+                "explain off" => {
+                    self.config.display.explain_mode = false;
+                    println!("\x1b[38;5;245m◆\x1b[0m Explain mode: \x1b[38;5;245mOFF\x1b[0m");
+                    println!("  Commands will execute without explanations.");
+                    continue;
+                }
+                "explain" => {
+                    let status = if self.config.display.explain_mode {
+                        "\x1b[38;5;150mON\x1b[0m"
+                    } else {
+                        "\x1b[38;5;245mOFF\x1b[0m"
+                    };
+                    println!("Explain mode: {}", status);
+                    println!("  Use 'explain on' or 'explain off' to toggle.");
+                    continue;
+                }
                 "" => continue,
                 _ => {}
             }
@@ -116,20 +140,21 @@ impl KaidoREPL {
         let mut agent = AgentLoop::new(
             problem.to_string(),
             self.tool_context.clone()
-        );
-        
+        )
+        .with_explain_mode(self.config.display.explain_mode);
+
         // Set up progress callback with audit logging
         let session_id_clone = session_id.clone();
         let logger_clone = self.audit_logger.clone();
         let callback = move |step: &AgentStep| {
             Self::display_step_static(step);
-            
+
             // Log step to audit
             if let Some(logger) = &logger_clone {
                 let _ = logger.log_step(&session_id_clone, step);
             }
         };
-        
+
         agent = agent.with_progress_callback(callback);
         
         // Run until complete
@@ -188,6 +213,18 @@ impl KaidoREPL {
                     println!("\x1b[38;5;245m│\x1b[0m {}", step.content);
                 }
                 println!("\x1b[38;5;245m╰─\x1b[0m");
+
+                // Display educational explanation if present (explain mode)
+                if let Some(explanation) = &step.explanation {
+                    println!();
+                    println!("\x1b[38;5;150m┌─ WHAT YOU'RE LEARNING ─────────────────────────────────┐\x1b[0m");
+                    for line in explanation.lines() {
+                        println!("\x1b[38;5;150m│\x1b[0m {}", line);
+                    }
+                    println!("\x1b[38;5;150m└─────────────────────────────────────────────────────────┘\x1b[0m");
+                    println!();
+                }
+
                 print!("\x1b[38;5;242m⟳ executing...\x1b[0m ");
                 io::stdout().flush().ok();
             }
@@ -266,9 +303,10 @@ impl KaidoREPL {
         
         println!("\x1b[38;5;245m│\x1b[0m");
         println!("\x1b[38;5;245m│\x1b[0m \x1b[38;5;250mCommands:\x1b[0m");
-        println!("\x1b[38;5;245m│\x1b[0m   \x1b[38;5;147mhelp\x1b[0m   Show this help");
-        println!("\x1b[38;5;245m│\x1b[0m   \x1b[38;5;147mclear\x1b[0m  Clear screen");
-        println!("\x1b[38;5;245m│\x1b[0m   \x1b[38;5;147mexit\x1b[0m   Quit agent");
+        println!("\x1b[38;5;245m│\x1b[0m   \x1b[38;5;147mhelp\x1b[0m        Show this help");
+        println!("\x1b[38;5;245m│\x1b[0m   \x1b[38;5;147mclear\x1b[0m       Clear screen");
+        println!("\x1b[38;5;245m│\x1b[0m   \x1b[38;5;147mexplain\x1b[0m     Toggle explain mode (on/off)");
+        println!("\x1b[38;5;245m│\x1b[0m   \x1b[38;5;147mexit\x1b[0m        Quit agent");
         
         println!("\x1b[38;5;245m│\x1b[0m");
         println!("\x1b[38;5;245m│\x1b[0m \x1b[38;5;250mReAct Process:\x1b[0m");

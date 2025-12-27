@@ -63,6 +63,8 @@ impl Default for SafetyConfig {
 pub struct DisplayConfig {
     pub show_confidence_threshold: u8,
     pub show_reasoning: bool,
+    /// Enable explain mode to show educational command breakdowns
+    pub explain_mode: bool,
 }
 
 impl Default for DisplayConfig {
@@ -70,6 +72,7 @@ impl Default for DisplayConfig {
         Self {
             show_confidence_threshold: 70,
             show_reasoning: false,
+            explain_mode: true, // Default ON for learning-first experience
         }
     }
 }

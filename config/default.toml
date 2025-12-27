@@ -24,3 +24,4 @@ log_commands = true
 # Display Configuration
 show_confidence_threshold = 70  # Show warning if AI confidence below this
 show_reasoning = false  # Set to true to see AI reasoning for every command
+explain_mode = true  # Show educational command breakdowns (AI Ops Coach feature)

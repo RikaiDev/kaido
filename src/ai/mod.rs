@@ -1,6 +1,8 @@
 pub mod gemini;
+pub mod explainer;
 
 pub use gemini::GeminiBackend;
+pub use explainer::CommandExplainer;
 
 use anyhow::Result;
 use async_trait::async_trait;
