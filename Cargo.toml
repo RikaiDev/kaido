@@ -58,6 +58,7 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 
 # Async trait support
 async-trait = "0.1"
+terminal_size = "0.4.3"
 
 [dev-dependencies]
 tempfile = "3.8"

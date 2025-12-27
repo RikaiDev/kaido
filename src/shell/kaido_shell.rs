@@ -11,7 +11,7 @@ use rustyline::{Config, Editor};
 use super::history::{ensure_history_dir, HistoryConfig};
 use super::prompt::PromptBuilder;
 use super::pty::{PtyExecutionResult, PtyExecutor};
-use crate::mentor::{ErrorDetector, ErrorInfo};
+use crate::mentor::{ErrorDetector, ErrorInfo, MentorDisplay, Verbosity};
 
 /// Kaido shell configuration
 #[derive(Debug, Clone)]
@@ -24,6 +24,8 @@ pub struct ShellConfig {
     pub show_git_branch: bool,
     /// Shell to use for command execution
     pub shell: Option<String>,
+    /// Mentor display verbosity level
+    pub mentor_verbosity: Verbosity,
 }
 
 impl Default for ShellConfig {
@@ -33,6 +35,7 @@ impl Default for ShellConfig {
             use_colors: true,
             show_git_branch: true,
             shell: None,
+            mentor_verbosity: Verbosity::Normal,
         }
     }
 }
@@ -49,6 +52,8 @@ pub struct KaidoShell {
     prompt_builder: PromptBuilder,
     /// Error detector for mentor system
     error_detector: ErrorDetector,
+    /// Mentor display for formatting guidance
+    mentor_display: MentorDisplay,
     /// Whether the shell is running
     running: bool,
     /// Last execution result (for mentor system)
@@ -103,12 +108,21 @@ impl KaidoShell {
             prompt_builder = prompt_builder.no_git_branch();
         }
 
+        // Create mentor display with config
+        let mentor_display_config = crate::mentor::DisplayConfig {
+            verbosity: config.mentor_verbosity,
+            terminal_width: 0, // Auto-detect
+            colors_enabled: config.use_colors,
+        };
+        let mentor_display = MentorDisplay::with_config(mentor_display_config);
+
         Ok(Self {
             config,
             pty,
             editor,
             prompt_builder,
             error_detector: ErrorDetector::new(),
+            mentor_display,
             running: false,
             last_result: None,
             last_error: None,
@@ -210,6 +224,32 @@ impl KaidoShell {
                 self.display_history();
                 true
             }
+            // Verbosity commands
+            "verbose" | "mentor verbose" => {
+                self.set_verbosity(Verbosity::Verbose);
+                println!("\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1mVerbose\x1b[0m (full explanations)");
+                true
+            }
+            "normal" | "mentor normal" => {
+                self.set_verbosity(Verbosity::Normal);
+                println!("\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1mNormal\x1b[0m (key points)");
+                true
+            }
+            "compact" | "mentor compact" => {
+                self.set_verbosity(Verbosity::Compact);
+                println!("\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1mCompact\x1b[0m (one-liner)");
+                true
+            }
+            "mentor" => {
+                let level = match self.config.mentor_verbosity {
+                    Verbosity::Verbose => "Verbose",
+                    Verbosity::Normal => "Normal",
+                    Verbosity::Compact => "Compact",
+                };
+                println!("\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1m{}\x1b[0m", level);
+                println!("  Use 'verbose', 'normal', or 'compact' to change.");
+                true
+            }
             _ if line.starts_with("cd ") => {
                 self.handle_cd(&line[3..]);
                 true
@@ -222,6 +262,17 @@ impl KaidoShell {
         }
     }
 
+    /// Set mentor verbosity level
+    fn set_verbosity(&mut self, verbosity: Verbosity) {
+        self.config.mentor_verbosity = verbosity;
+        let display_config = crate::mentor::DisplayConfig {
+            verbosity,
+            terminal_width: 0,
+            colors_enabled: self.config.use_colors,
+        };
+        self.mentor_display = MentorDisplay::with_config(display_config);
+    }
+
     /// Display help message
     fn display_help(&self) {
         println!();
@@ -232,6 +283,13 @@ impl KaidoShell {
         println!("  \x1b[1mcd <dir>\x1b[0m   Change directory");
         println!("  \x1b[1mclear\x1b[0m      Clear the screen");
         println!("  \x1b[1mexit\x1b[0m       Exit the shell");
+        println!();
+        println!("\x1b[1;36mMentor Verbosity\x1b[0m");
+        println!();
+        println!("  \x1b[1mmentor\x1b[0m     Show current verbosity level");
+        println!("  \x1b[1mverbose\x1b[0m    Full explanations with next steps");
+        println!("  \x1b[1mnormal\x1b[0m     Key points only (default)");
+        println!("  \x1b[1mcompact\x1b[0m    One-liner for experts");
         println!();
         println!("\x1b[2mAll other commands are executed in the system shell.\x1b[0m");
         println!("\x1b[2mWhen errors occur, I'll help you understand them.\x1b[0m");
@@ -308,52 +366,10 @@ impl KaidoShell {
         Ok(())
     }
 
-    /// Display a basic mentor block for detected errors
-    /// (Full formatting will be in issue #22)
+    /// Display mentor guidance for detected errors
     fn display_mentor_block(&self, error: &ErrorInfo) {
-        println!();
-        println!("\x1b[36m┌─ MENTOR ────────────────────────────────────────────────────┐\x1b[0m");
-        println!("\x1b[36m│\x1b[0m                                                              \x1b[36m│\x1b[0m");
-
-        // Error type
-        println!(
-            "\x1b[36m│\x1b[0m  \x1b[1;33mType:\x1b[0m {}{}",
-            error.error_type.name(),
-            " ".repeat(47 - error.error_type.name().len()).chars().take(47 - error.error_type.name().len()).collect::<String>() + "\x1b[36m│\x1b[0m"
-        );
-
-        // Key message (truncate if too long)
-        let key_msg = if error.key_message.len() > 50 {
-            format!("{}...", &error.key_message[..47])
-        } else {
-            error.key_message.clone()
-        };
-        println!(
-            "\x1b[36m│\x1b[0m  \x1b[1;31mKey:\x1b[0m  {}{}",
-            key_msg,
-            " ".repeat(50usize.saturating_sub(key_msg.len())).chars().take(50 - key_msg.len().min(50)).collect::<String>() + "\x1b[36m│\x1b[0m"
-        );
-
-        // Source location if available
-        if let Some(ref loc) = error.source_location {
-            let loc_str = loc.to_string();
-            let loc_display = if loc_str.len() > 48 {
-                format!("...{}", &loc_str[loc_str.len()-45..])
-            } else {
-                loc_str
-            };
-            println!(
-                "\x1b[36m│\x1b[0m  \x1b[1;34mLocation:\x1b[0m {}{}",
-                loc_display,
-                " ".repeat(45usize.saturating_sub(loc_display.len())) + "\x1b[36m│\x1b[0m"
-            );
-        }
-
-        println!("\x1b[36m│\x1b[0m                                                              \x1b[36m│\x1b[0m");
-        println!("\x1b[36m│\x1b[0m  \x1b[2m(Full guidance coming in future update)\x1b[0m                   \x1b[36m│\x1b[0m");
-        println!("\x1b[36m│\x1b[0m                                                              \x1b[36m│\x1b[0m");
-        println!("\x1b[36m└──────────────────────────────────────────────────────────────┘\x1b[0m");
-        println!();
+        let output = self.mentor_display.render(error);
+        print!("{}", output);
     }
 
     /// Save history to file
