@@ -33,6 +33,12 @@ enum Commands {
     },
     /// Start the mentor shell (new shell wrapper mode)
     Shell,
+    /// Check for updates and upgrade to the latest version
+    Update {
+        /// Just check for updates without installing
+        #[arg(long)]
+        check: bool,
+    },
 }
 
 #[tokio::main]
@@ -54,6 +60,9 @@ async fn main() -> anyhow::Result<()> {
         Some(Commands::Shell) => {
             let mut shell = KaidoShell::new()?;
             shell.run().await?;
+        }
+        Some(Commands::Update { check }) => {
+            run_update(check).await?;
         }
         None => {
             let mut repl = KaidoREPL::new()?;
@@ -615,4 +624,338 @@ async fn run_init_non_interactive(config: &mut Config) -> anyhow::Result<()> {
     println!("\nConfiguration saved.");
 
     Ok(())
+}
+
+// ══════════════════════════════════════════════════════════════
+// UPDATE COMMAND
+// ══════════════════════════════════════════════════════════════
+
+const GITHUB_REPO: &str = "RikaiDev/kaido";
+const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// GitHub release info
+#[derive(serde::Deserialize)]
+struct GitHubRelease {
+    tag_name: String,
+    html_url: String,
+    assets: Vec<GitHubAsset>,
+    body: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+struct GitHubAsset {
+    name: String,
+    browser_download_url: String,
+}
+
+/// Run the update command
+async fn run_update(check_only: bool) -> anyhow::Result<()> {
+    println!("\n{CYAN}━━━ Kaido Update ━━━{RESET}\n");
+
+    // Teaching moment
+    println!("{DIM}┌─ WHAT YOU'RE LEARNING ─────────────────────────────────────┐{RESET}");
+    println!(
+        "{DIM}│{RESET}                                                             {DIM}│{RESET}"
+    );
+    println!(
+        "{DIM}│{RESET}  Self-updating binaries fetch new versions from a release  {DIM}│{RESET}"
+    );
+    println!(
+        "{DIM}│{RESET}  server (like GitHub Releases) and replace themselves.     {DIM}│{RESET}"
+    );
+    println!(
+        "{DIM}│{RESET}  This is common for CLI tools to stay up-to-date easily.   {DIM}│{RESET}"
+    );
+    println!(
+        "{DIM}│{RESET}                                                             {DIM}│{RESET}"
+    );
+    println!("{DIM}└─────────────────────────────────────────────────────────────┘{RESET}\n");
+
+    println!("Current version: {CYAN}v{CURRENT_VERSION}{RESET}");
+    print!("{DIM}Checking for updates...{RESET} ");
+    io::stdout().flush()?;
+
+    // Fetch latest release from GitHub
+    let release = match fetch_latest_release().await {
+        Ok(r) => r,
+        Err(e) => {
+            println!("{YELLOW}⚠{RESET}");
+            println!("\n{YELLOW}Could not check for updates: {e}{RESET}");
+            println!("{DIM}Check your internet connection or try again later.{RESET}");
+            return Ok(());
+        }
+    };
+
+    let latest_version = release.tag_name.trim_start_matches('v');
+    println!("{GREEN}✓{RESET}");
+
+    // Compare versions
+    match compare_versions(CURRENT_VERSION, latest_version) {
+        std::cmp::Ordering::Less => {
+            println!(
+                "\n{GREEN}╭───────────────────────────────────────────────────────────╮{RESET}"
+            );
+            println!(
+                "{GREEN}│{RESET}  {BOLD}New version available!{RESET}                                   {GREEN}│{RESET}"
+            );
+            println!("{GREEN}│{RESET}                                                           {GREEN}│{RESET}");
+            let current_padded = format!("{CURRENT_VERSION:<10}");
+            let latest_padded = format!("{latest_version:<10}");
+            println!("{GREEN}│{RESET}  Current: v{current_padded}  Latest: {CYAN}v{latest_padded}{RESET}            {GREEN}│{RESET}");
+            println!("{GREEN}│{RESET}                                                           {GREEN}│{RESET}");
+            println!("{GREEN}╰───────────────────────────────────────────────────────────╯{RESET}");
+
+            // Show release notes if available
+            if let Some(body) = &release.body {
+                let summary: String = body.lines().take(5).collect::<Vec<_>>().join("\n");
+                if !summary.is_empty() {
+                    println!("\n{DIM}Release notes:{RESET}");
+                    println!("{DIM}{summary}{RESET}");
+                }
+            }
+
+            if check_only {
+                println!("\n{DIM}Run 'kaido update' to install the new version.{RESET}");
+                println!("Release: {CYAN}{}{RESET}", release.html_url);
+                return Ok(());
+            }
+
+            // Ask for confirmation
+            println!();
+            print!("Install v{latest_version}? [Y/n]: ");
+            io::stdout().flush()?;
+
+            let mut response = String::new();
+            io::stdin().read_line(&mut response)?;
+            if response.trim().to_lowercase() == "n" {
+                println!("{DIM}Update cancelled.{RESET}");
+                return Ok(());
+            }
+
+            // Perform update
+            perform_update(&release).await?;
+        }
+        std::cmp::Ordering::Equal => {
+            println!("\n{GREEN}✓ You're on the latest version (v{CURRENT_VERSION}){RESET}");
+        }
+        std::cmp::Ordering::Greater => {
+            println!("\n{CYAN}You're running a newer version than the latest release.{RESET}");
+            println!("{DIM}(Development build?){RESET}");
+        }
+    }
+
+    Ok(())
+}
+
+/// Fetch latest release from GitHub API
+async fn fetch_latest_release() -> anyhow::Result<GitHubRelease> {
+    let url = format!("https://api.github.com/repos/{GITHUB_REPO}/releases/latest");
+
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&url)
+        .header("User-Agent", format!("kaido/{CURRENT_VERSION}"))
+        .header("Accept", "application/vnd.github.v3+json")
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        anyhow::bail!("GitHub API returned {}", response.status());
+    }
+
+    let release: GitHubRelease = response.json().await?;
+    Ok(release)
+}
+
+/// Compare semantic versions
+fn compare_versions(current: &str, latest: &str) -> std::cmp::Ordering {
+    let parse = |v: &str| -> Vec<u32> { v.split('.').filter_map(|s| s.parse().ok()).collect() };
+
+    let current_parts = parse(current);
+    let latest_parts = parse(latest);
+
+    for i in 0..3 {
+        let c = current_parts.get(i).unwrap_or(&0);
+        let l = latest_parts.get(i).unwrap_or(&0);
+        match c.cmp(l) {
+            std::cmp::Ordering::Equal => continue,
+            other => return other,
+        }
+    }
+
+    std::cmp::Ordering::Equal
+}
+
+/// Download and install the new version
+async fn perform_update(release: &GitHubRelease) -> anyhow::Result<()> {
+    // Detect platform
+    let platform = detect_platform();
+    println!("\n{DIM}Detected platform: {platform}{RESET}");
+
+    // Find matching asset
+    let asset_name = format!("kaido-{platform}.tar.gz");
+    let asset = release
+        .assets
+        .iter()
+        .find(|a| a.name == asset_name)
+        .ok_or_else(|| anyhow::anyhow!("No release found for platform: {platform}"))?;
+
+    println!("{DIM}Downloading: {}{RESET}", asset.name);
+
+    // Download to temp file
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&asset.browser_download_url)
+        .header("User-Agent", format!("kaido/{CURRENT_VERSION}"))
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        anyhow::bail!("Download failed: {}", response.status());
+    }
+
+    let bytes = response.bytes().await?;
+    println!("{DIM}Downloaded {} bytes{RESET}", bytes.len());
+
+    // Create temp directory
+    let temp_dir = std::env::temp_dir().join("kaido-update");
+    std::fs::create_dir_all(&temp_dir)?;
+
+    // Write tarball
+    let tarball_path = temp_dir.join(&asset.name);
+    std::fs::write(&tarball_path, &bytes)?;
+
+    // Extract tarball
+    println!("{DIM}Extracting...{RESET}");
+    let status = std::process::Command::new("tar")
+        .args(["-xzf", tarball_path.to_str().unwrap()])
+        .current_dir(&temp_dir)
+        .status()?;
+
+    if !status.success() {
+        anyhow::bail!("Failed to extract archive");
+    }
+
+    // Find current executable path
+    let current_exe = std::env::current_exe()?;
+    let new_binary = temp_dir.join("kaido");
+
+    if !new_binary.exists() {
+        anyhow::bail!("Binary not found in archive");
+    }
+
+    // Try to replace the binary
+    println!("{DIM}Installing...{RESET}");
+
+    // On Unix, we need to handle the case where the binary is running
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        // Make new binary executable
+        let mut perms = std::fs::metadata(&new_binary)?.permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&new_binary, perms)?;
+
+        // Try direct replacement first
+        match std::fs::rename(&new_binary, &current_exe) {
+            Ok(_) => {
+                println!(
+                    "\n{GREEN}✓ Updated successfully to v{}!{RESET}",
+                    release.tag_name.trim_start_matches('v')
+                );
+            }
+            Err(e)
+                if e.raw_os_error() == Some(libc::EACCES)
+                    || e.raw_os_error() == Some(libc::EPERM) =>
+            {
+                // Need sudo
+                println!("{YELLOW}Need elevated permissions to update.{RESET}");
+                print!("Run with sudo? [Y/n]: ");
+                io::stdout().flush()?;
+
+                let mut response = String::new();
+                io::stdin().read_line(&mut response)?;
+                if response.trim().to_lowercase() == "n" {
+                    println!("{DIM}Update cancelled. Manual install:{RESET}");
+                    println!(
+                        "  sudo cp {} {}",
+                        new_binary.display(),
+                        current_exe.display()
+                    );
+                    return Ok(());
+                }
+
+                let status = std::process::Command::new("sudo")
+                    .args([
+                        "cp",
+                        new_binary.to_str().unwrap(),
+                        current_exe.to_str().unwrap(),
+                    ])
+                    .status()?;
+
+                if status.success() {
+                    println!(
+                        "\n{GREEN}✓ Updated successfully to v{}!{RESET}",
+                        release.tag_name.trim_start_matches('v')
+                    );
+                } else {
+                    anyhow::bail!("sudo cp failed");
+                }
+            }
+            Err(e) => {
+                // Try copy instead of rename (cross-filesystem)
+                match std::fs::copy(&new_binary, &current_exe) {
+                    Ok(_) => {
+                        println!(
+                            "\n{GREEN}✓ Updated successfully to v{}!{RESET}",
+                            release.tag_name.trim_start_matches('v')
+                        );
+                    }
+                    Err(_) => {
+                        anyhow::bail!("Failed to update: {e}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        std::fs::copy(&new_binary, &current_exe)?;
+        println!(
+            "\n{GREEN}✓ Updated successfully to v{}!{RESET}",
+            release.tag_name.trim_start_matches('v')
+        );
+    }
+
+    // Cleanup
+    let _ = std::fs::remove_dir_all(&temp_dir);
+
+    println!("\n{DIM}Run 'kaido --version' to verify.{RESET}");
+
+    Ok(())
+}
+
+/// Detect current platform for download
+fn detect_platform() -> &'static str {
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    return "linux-x64";
+
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    return "linux-arm64";
+
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    return "macos-x64";
+
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    return "macos-arm64";
+
+    #[cfg(not(any(
+        all(target_os = "linux", target_arch = "x86_64"),
+        all(target_os = "linux", target_arch = "aarch64"),
+        all(target_os = "macos", target_arch = "x86_64"),
+        all(target_os = "macos", target_arch = "aarch64"),
+    )))]
+    return "unknown";
 }
