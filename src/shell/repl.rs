@@ -1,11 +1,14 @@
 use anyhow::Result;
 use std::io::{self, Write};
+use std::path::PathBuf;
 
 use crate::agent::{AgentLoop, AgentStep, StepType};
 use crate::ai::AIManager;
 use crate::audit::AgentAuditLogger;
 use crate::config::Config;
 use crate::tools::ToolContext;
+
+const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Kaido AI Agent REPL
 pub struct KaidoREPL {
@@ -64,6 +67,9 @@ impl KaidoREPL {
     /// Run the REPL loop
     pub async fn run(&mut self) -> Result<()> {
         self.print_welcome();
+
+        // Check for updates in background (non-blocking)
+        self.check_for_updates().await;
 
         loop {
             // Read user input
@@ -293,7 +299,7 @@ impl KaidoREPL {
         println!("    ⬡ ⬡        \x1b[1mKAIDO\x1b[0;38;5;147m");
         println!("   ⬡ ⬡ ⬡       autonomous ops agent");
         println!("  ⬡ ⬡ ⬡ ⬡");
-        println!(" ⬡ ⬡ ⬡ ⬡ ⬡    \x1b[38;5;245mv0.1.0\x1b[0m");
+        println!(" ⬡ ⬡ ⬡ ⬡ ⬡    \x1b[38;5;245mv{CURRENT_VERSION}\x1b[0m");
         println!();
 
         println!("\x1b[38;5;250mCapabilities:\x1b[0m");
@@ -341,6 +347,115 @@ impl KaidoREPL {
         println!("\x1b[38;5;245m│\x1b[0m   \x1b[38;5;242m5.\x1b[0m Repeat until solved");
 
         println!("\x1b[38;5;250m╰─\x1b[0m");
+    }
+
+    /// Check for updates on startup (with caching)
+    async fn check_for_updates(&self) {
+        // Only check once per day
+        let cache_file = Self::get_update_cache_path();
+        if !Self::should_check_updates(&cache_file) {
+            return;
+        }
+
+        // Fetch latest version from GitHub (with timeout)
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(3),
+            Self::fetch_latest_version(),
+        )
+        .await;
+
+        match result {
+            Ok(Ok(latest_version)) => {
+                // Save check timestamp
+                Self::save_update_check(&cache_file, &latest_version);
+
+                // Compare versions
+                if Self::is_newer_version(&latest_version) {
+                    println!();
+                    println!("\x1b[38;5;221m╭───────────────────────────────────────────────────────────╮\x1b[0m");
+                    println!("\x1b[38;5;221m│\x1b[0m  \x1b[1mUpdate available!\x1b[0m  v{CURRENT_VERSION} → \x1b[38;5;150mv{latest_version}\x1b[0m                    \x1b[38;5;221m│\x1b[0m");
+                    println!("\x1b[38;5;221m│\x1b[0m  Run \x1b[38;5;147mkaido update\x1b[0m to upgrade                              \x1b[38;5;221m│\x1b[0m");
+                    println!("\x1b[38;5;221m╰───────────────────────────────────────────────────────────╯\x1b[0m");
+                }
+            }
+            Ok(Err(_)) | Err(_) => {
+                // Silently ignore errors - don't disrupt startup
+            }
+        }
+    }
+
+    /// Get path to update cache file
+    fn get_update_cache_path() -> PathBuf {
+        dirs::home_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join(".kaido")
+            .join("update_check")
+    }
+
+    /// Check if we should check for updates (once per day)
+    fn should_check_updates(cache_file: &PathBuf) -> bool {
+        match std::fs::read_to_string(cache_file) {
+            Ok(content) => {
+                // Parse timestamp from first line
+                if let Some(timestamp_str) = content.lines().next() {
+                    if let Ok(timestamp) = timestamp_str.parse::<i64>() {
+                        let now = chrono::Utc::now().timestamp();
+                        let one_day = 24 * 60 * 60;
+                        return now - timestamp > one_day;
+                    }
+                }
+                true
+            }
+            Err(_) => true, // No cache file, should check
+        }
+    }
+
+    /// Save update check timestamp and latest version
+    fn save_update_check(cache_file: &PathBuf, latest_version: &str) {
+        let timestamp = chrono::Utc::now().timestamp();
+        let content = format!("{timestamp}\n{latest_version}");
+        let _ = std::fs::write(cache_file, content);
+    }
+
+    /// Fetch latest version from GitHub Releases API
+    async fn fetch_latest_version() -> Result<String> {
+        let client = reqwest::Client::new();
+        let response = client
+            .get("https://api.github.com/repos/RikaiDev/kaido/releases/latest")
+            .header("User-Agent", format!("kaido/{CURRENT_VERSION}"))
+            .header("Accept", "application/vnd.github.v3+json")
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            anyhow::bail!("GitHub API error");
+        }
+
+        let json: serde_json::Value = response.json().await?;
+        let tag = json["tag_name"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("No tag_name"))?;
+
+        Ok(tag.trim_start_matches('v').to_string())
+    }
+
+    /// Check if latest version is newer than current
+    fn is_newer_version(latest: &str) -> bool {
+        let parse = |v: &str| -> Vec<u32> { v.split('.').filter_map(|s| s.parse().ok()).collect() };
+
+        let current = parse(CURRENT_VERSION);
+        let latest = parse(latest);
+
+        for i in 0..3 {
+            let c = current.get(i).unwrap_or(&0);
+            let l = latest.get(i).unwrap_or(&0);
+            match c.cmp(l) {
+                std::cmp::Ordering::Less => return true,
+                std::cmp::Ordering::Greater => return false,
+                std::cmp::Ordering::Equal => continue,
+            }
+        }
+        false
     }
 }
 
