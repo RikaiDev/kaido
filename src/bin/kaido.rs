@@ -16,6 +16,7 @@ const BOLD: &str = "\x1b[1m";
 
 #[derive(Parser)]
 #[command(name = "kaido")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "Kaido AI - Your AI Ops Coach", long_about = None)]
 struct Cli {
     #[command(subcommand)]
@@ -79,7 +80,7 @@ async fn run_init_learning(non_interactive: bool) -> anyhow::Result<()> {
     println!(
         "{CYAN}│{RESET}                                                           {CYAN}│{RESET}"
     );
-    println!("{CYAN}│{RESET}   {BOLD}KAIDO SETUP{RESET} - Your First Ops Lesson                     {CYAN}│{RESET}");
+    println!("{CYAN}│{RESET}   {BOLD}KAIDO SETUP{RESET} - Configure Your AI Backend                 {CYAN}│{RESET}");
     println!(
         "{CYAN}│{RESET}                                                           {CYAN}│{RESET}"
     );
@@ -406,14 +407,27 @@ async fn setup_ollama(config: &mut Config) -> anyhow::Result<()> {
     // List available models
     match ollama.list_models().await {
         Ok(models) if !models.is_empty() => {
+            // Auto-select best model for ops tasks
+            let recommended = auto_select_model(&models);
+            if let Some(ref model) = recommended {
+                config.ollama.model = model.clone();
+            }
+
             println!("\nAvailable models:");
             for (i, model) in models.iter().enumerate() {
-                let marker = if model == &config.ollama.model {
+                let is_selected = model == &config.ollama.model;
+                let is_vision = model.contains("llava") || model.contains("vision");
+                let marker = if is_selected {
                     format!("{GREEN}→{RESET}")
                 } else {
                     format!("{DIM} {RESET}")
                 };
-                println!("  {marker} {i}. {model}");
+                let suffix = if is_vision {
+                    format!(" {DIM}(vision){RESET}")
+                } else {
+                    String::new()
+                };
+                println!("  {marker} {i}. {model}{suffix}");
             }
             println!();
 
@@ -491,6 +505,83 @@ async fn setup_ollama(config: &mut Config) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+/// Auto-select the best model for ops tasks
+///
+/// Strategy:
+/// 1. Score each model based on family preference and version
+/// 2. Skip vision/multimodal models unless no other option
+/// 3. Higher score = better choice
+fn auto_select_model(models: &[String]) -> Option<String> {
+    /// Model families with base priority (higher = better for ops tasks)
+    const MODEL_FAMILIES: &[(&str, i32)] = &[
+        ("llama", 100),      // Meta's Llama family - excellent for ops
+        ("mistral", 90),     // Mistral - fast and capable
+        ("qwen", 85),        // Alibaba's Qwen - good multilingual
+        ("phi", 80),         // Microsoft's Phi - efficient
+        ("gemma", 75),       // Google's Gemma - solid choice
+        ("codellama", 70),   // Code-focused variant
+        ("deepseek", 65),    // DeepSeek models
+        ("yi", 60),          // 01.AI's Yi models
+        ("neural", 55),      // Neural-chat etc
+        ("solar", 50),       // Upstage Solar
+    ];
+
+    /// Patterns that indicate vision/multimodal models (avoid for text ops)
+    const VISION_PATTERNS: &[&str] = &[
+        "llava", "vision", "moondream", "bakllava", "cogvlm",
+        "fuyu", "img", "image", "visual", "vl",
+    ];
+
+    /// Check if model is a vision/multimodal model
+    fn is_vision_model(name: &str) -> bool {
+        let lower = name.to_lowercase();
+        VISION_PATTERNS.iter().any(|p| lower.contains(p))
+    }
+
+    /// Extract version number from model name (e.g., "llama3.2" -> 3.2)
+    fn extract_version(name: &str) -> f32 {
+        let lower = name.to_lowercase();
+        // Try to find patterns like "3.2", "3", "2.5" after the family name
+        for word in lower.split(|c: char| !c.is_ascii_digit() && c != '.') {
+            if let Ok(v) = word.parse::<f32>() {
+                if v > 0.0 && v < 100.0 {
+                    return v;
+                }
+            }
+        }
+        1.0 // Default version
+    }
+
+    /// Calculate score for a model
+    fn score_model(name: &str) -> i32 {
+        let lower = name.to_lowercase();
+
+        // Vision models get negative score (but still selectable as last resort)
+        if is_vision_model(&lower) {
+            return -100;
+        }
+
+        // Find matching family and get base score
+        let base_score = MODEL_FAMILIES
+            .iter()
+            .find(|(family, _)| lower.starts_with(family) || lower.contains(family))
+            .map(|(_, score)| *score)
+            .unwrap_or(10); // Unknown models get low score
+
+        // Add version bonus (newer = better, up to +10 points)
+        let version = extract_version(&lower);
+        let version_bonus = (version * 2.0).min(10.0) as i32;
+
+        base_score + version_bonus
+    }
+
+    // Score all models and pick the best
+    models
+        .iter()
+        .max_by_key(|m| score_model(m))
+        .cloned()
 }
 
 /// Check if Ollama is available
