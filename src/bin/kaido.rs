@@ -516,22 +516,30 @@ async fn setup_ollama(config: &mut Config) -> anyhow::Result<()> {
 fn auto_select_model(models: &[String]) -> Option<String> {
     /// Model families with base priority (higher = better for ops tasks)
     const MODEL_FAMILIES: &[(&str, i32)] = &[
-        ("llama", 100),      // Meta's Llama family - excellent for ops
-        ("mistral", 90),     // Mistral - fast and capable
-        ("qwen", 85),        // Alibaba's Qwen - good multilingual
-        ("phi", 80),         // Microsoft's Phi - efficient
-        ("gemma", 75),       // Google's Gemma - solid choice
-        ("codellama", 70),   // Code-focused variant
-        ("deepseek", 65),    // DeepSeek models
-        ("yi", 60),          // 01.AI's Yi models
-        ("neural", 55),      // Neural-chat etc
-        ("solar", 50),       // Upstage Solar
+        ("llama", 100),    // Meta's Llama family - excellent for ops
+        ("mistral", 90),   // Mistral - fast and capable
+        ("qwen", 85),      // Alibaba's Qwen - good multilingual
+        ("phi", 80),       // Microsoft's Phi - efficient
+        ("gemma", 75),     // Google's Gemma - solid choice
+        ("codellama", 70), // Code-focused variant
+        ("deepseek", 65),  // DeepSeek models
+        ("yi", 60),        // 01.AI's Yi models
+        ("neural", 55),    // Neural-chat etc
+        ("solar", 50),     // Upstage Solar
     ];
 
     /// Patterns that indicate vision/multimodal models (avoid for text ops)
     const VISION_PATTERNS: &[&str] = &[
-        "llava", "vision", "moondream", "bakllava", "cogvlm",
-        "fuyu", "img", "image", "visual", "vl",
+        "llava",
+        "vision",
+        "moondream",
+        "bakllava",
+        "cogvlm",
+        "fuyu",
+        "img",
+        "image",
+        "visual",
+        "vl",
     ];
 
     /// Check if model is a vision/multimodal model
@@ -578,10 +586,7 @@ fn auto_select_model(models: &[String]) -> Option<String> {
     }
 
     // Score all models and pick the best
-    models
-        .iter()
-        .max_by_key(|m| score_model(m))
-        .cloned()
+    models.iter().max_by_key(|m| score_model(m)).cloned()
 }
 
 /// Check if Ollama is available
