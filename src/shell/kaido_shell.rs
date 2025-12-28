@@ -20,7 +20,9 @@ use super::prompt::PromptBuilder;
 use super::pty::{PtyExecutionResult, PtyExecutor};
 use crate::ai::AIManager;
 use crate::config::Config as KaidoConfig;
-use crate::learning::{LearningTracker, SessionStats, SkillDetector, SummaryGenerator, VerbosityMode};
+use crate::learning::{
+    LearningTracker, SessionStats, SkillDetector, SummaryGenerator, VerbosityMode,
+};
 use crate::mentor::{ErrorDetector, ErrorInfo, MentorDisplay, Verbosity};
 use crate::tools::LLMBackend;
 
@@ -54,7 +56,7 @@ impl Default for ShellConfig {
             shell: None,
             mentor_verbosity: Verbosity::Normal,
             verbosity_mode: VerbosityMode::Auto,
-            ai_enabled: true,  // AI-native by default
+            ai_enabled: true, // AI-native by default
             show_suggestions: true,
         }
     }
@@ -169,7 +171,7 @@ impl KaidoShell {
         let learning_tracker = match LearningTracker::with_default_path() {
             Ok(tracker) => Some(tracker),
             Err(e) => {
-                log::warn!("Failed to create learning tracker: {}", e);
+                log::warn!("Failed to create learning tracker: {e}");
                 None
             }
         };
@@ -197,21 +199,11 @@ impl KaidoShell {
     /// Display welcome message
     fn display_welcome(&self) {
         println!();
-        println!(
-            "\x1b[1;36m  _  __     _     _       \x1b[0m"
-        );
-        println!(
-            "\x1b[1;36m | |/ /__ _(_) __| | ___  \x1b[0m"
-        );
-        println!(
-            "\x1b[1;36m | ' // _` | |/ _` |/ _ \\ \x1b[0m"
-        );
-        println!(
-            "\x1b[1;36m | . \\ (_| | | (_| | (_) |\x1b[0m"
-        );
-        println!(
-            "\x1b[1;36m |_|\\_\\__,_|_|\\__,_|\\___/ \x1b[0m"
-        );
+        println!("\x1b[1;36m  _  __     _     _       \x1b[0m");
+        println!("\x1b[1;36m | |/ /__ _(_) __| | ___  \x1b[0m");
+        println!("\x1b[1;36m | ' // _` | |/ _` |/ _ \\ \x1b[0m");
+        println!("\x1b[1;36m | . \\ (_| | | (_| | (_) |\x1b[0m");
+        println!("\x1b[1;36m |_|\\_\\__,_|_|\\__,_|\\___/ \x1b[0m");
         println!();
         println!("\x1b[1mAI-Native Shell\x1b[0m - Your intelligent ops companion.");
         println!();
@@ -220,9 +212,11 @@ impl KaidoShell {
         } else {
             "\x1b[2m◆ AI Mode: OFF\x1b[0m - Using pattern-based fallback"
         };
-        println!("{}", ai_status);
+        println!("{ai_status}");
         println!();
-        println!("\x1b[2mType commands normally. AI will explain errors and suggest next steps.\x1b[0m");
+        println!(
+            "\x1b[2mType commands normally. AI will explain errors and suggest next steps.\x1b[0m"
+        );
         println!("\x1b[2mType 'help' for commands, 'ai' for AI settings, 'exit' to quit.\x1b[0m");
         println!();
     }
@@ -273,7 +267,7 @@ impl KaidoShell {
                     self.running = false;
                 }
                 Err(err) => {
-                    log::error!("Readline error: {}", err);
+                    log::error!("Readline error: {err}");
                     return Err(err.into());
                 }
             }
@@ -299,7 +293,7 @@ impl KaidoShell {
     fn display_session_summary(&self) {
         let summary = SummaryGenerator::generate(&self.session_stats);
         let output = SummaryGenerator::render(&summary);
-        print!("{}", output);
+        print!("{output}");
     }
 
     /// Handle built-in shell commands
@@ -310,7 +304,9 @@ impl KaidoShell {
             "verbose" | "mentor verbose" => {
                 self.config.verbosity_mode = VerbosityMode::Fixed(Verbosity::Verbose);
                 self.set_verbosity(Verbosity::Verbose);
-                println!("\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1mVerbose\x1b[0m (full explanations)");
+                println!(
+                    "\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1mVerbose\x1b[0m (full explanations)"
+                );
                 return true;
             }
             "normal" | "mentor normal" => {
@@ -331,7 +327,7 @@ impl KaidoShell {
                     Verbosity::Normal => "Normal",
                     Verbosity::Compact => "Compact",
                 };
-                println!("\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1m{}\x1b[0m", level);
+                println!("\x1b[36m◆\x1b[0m Mentor verbosity: \x1b[1m{level}\x1b[0m");
                 println!("  Use 'verbose', 'normal', or 'compact' to change.");
                 return true;
             }
@@ -345,26 +341,36 @@ impl KaidoShell {
             }
             "mentor auto" => {
                 self.config.verbosity_mode = VerbosityMode::Auto;
-                println!("\x1b[36m◆\x1b[0m Mentor mode: \x1b[1mAuto\x1b[0m (adapts to your skill level)");
+                println!(
+                    "\x1b[36m◆\x1b[0m Mentor mode: \x1b[1mAuto\x1b[0m (adapts to your skill level)"
+                );
                 self.update_auto_verbosity();
                 return true;
             }
             "ai" | "ai status" => {
                 let status = if self.config.ai_enabled { "ON" } else { "OFF" };
-                let suggestions = if self.config.show_suggestions { "ON" } else { "OFF" };
-                println!("\x1b[38;5;147m◆\x1b[0m AI Mode: \x1b[1m{}\x1b[0m", status);
-                println!("  Suggestions: \x1b[1m{}\x1b[0m", suggestions);
+                let suggestions = if self.config.show_suggestions {
+                    "ON"
+                } else {
+                    "OFF"
+                };
+                println!("\x1b[38;5;147m◆\x1b[0m AI Mode: \x1b[1m{status}\x1b[0m");
+                println!("  Suggestions: \x1b[1m{suggestions}\x1b[0m");
                 println!("  Use 'ai on/off' or 'ai suggestions on/off' to change.");
                 return true;
             }
             "ai on" => {
                 self.config.ai_enabled = true;
-                println!("\x1b[38;5;147m◆\x1b[0m AI Mode: \x1b[1mON\x1b[0m (LLM-powered explanations)");
+                println!(
+                    "\x1b[38;5;147m◆\x1b[0m AI Mode: \x1b[1mON\x1b[0m (LLM-powered explanations)"
+                );
                 return true;
             }
             "ai off" => {
                 self.config.ai_enabled = false;
-                println!("\x1b[38;5;147m◆\x1b[0m AI Mode: \x1b[1mOFF\x1b[0m (pattern-based fallback)");
+                println!(
+                    "\x1b[38;5;147m◆\x1b[0m AI Mode: \x1b[1mOFF\x1b[0m (pattern-based fallback)"
+                );
                 return true;
             }
             "ai suggestions on" => {
@@ -402,10 +408,10 @@ impl KaidoShell {
             match execute_builtin(&builtin, &mut self.shell_env) {
                 BuiltinResult::Ok(None) => {}
                 BuiltinResult::Ok(Some(msg)) => {
-                    println!("{}", msg);
+                    println!("{msg}");
                 }
                 BuiltinResult::Error(msg) => {
-                    println!("\x1b[31m{}\x1b[0m", msg);
+                    println!("\x1b[31m{msg}\x1b[0m");
                 }
                 BuiltinResult::Exit(code) => {
                     if code == 0 {
@@ -421,7 +427,7 @@ impl KaidoShell {
                         if !self.handle_builtin(&cmd) {
                             // Non-builtin commands from source would need async execution
                             // For now, just handle builtins from sourced files
-                            println!("\x1b[33mSkipping external command: {}\x1b[0m", cmd);
+                            println!("\x1b[33mSkipping external command: {cmd}\x1b[0m");
                         }
                     }
                 }
@@ -527,15 +533,16 @@ impl KaidoShell {
 
         let resolution_pct = (progress.resolution_rate * 100.0) as u32;
 
-        println!("\x1b[1;36m┌─ Your Learning Progress ─────────────────────────────────────┐\x1b[0m");
+        println!(
+            "\x1b[1;36m┌─ Your Learning Progress ─────────────────────────────────────┐\x1b[0m"
+        );
         println!("\x1b[36m│\x1b[0m                                                               \x1b[36m│\x1b[0m");
         println!(
             "\x1b[36m│\x1b[0m  Total errors encountered: \x1b[1m{:<5}\x1b[0m                              \x1b[36m│\x1b[0m",
             progress.total_errors
         );
         println!(
-            "\x1b[36m│\x1b[0m  Resolution rate: \x1b[1m{}%\x1b[0m                                         \x1b[36m│\x1b[0m",
-            resolution_pct
+            "\x1b[36m│\x1b[0m  Resolution rate: \x1b[1m{resolution_pct}%\x1b[0m                                         \x1b[36m│\x1b[0m"
         );
         println!("\x1b[36m│\x1b[0m                                                               \x1b[36m│\x1b[0m");
 
@@ -555,12 +562,14 @@ impl KaidoShell {
         if !progress.concepts.is_empty() {
             println!("\x1b[36m│\x1b[0m  \x1b[1mConcepts encountered:\x1b[0m                                       \x1b[36m│\x1b[0m");
             for concept in progress.concepts.iter().take(5) {
-                println!("\x1b[36m│\x1b[0m    \x1b[32m✓\x1b[0m {}                                              \x1b[36m│\x1b[0m", concept);
+                println!("\x1b[36m│\x1b[0m    \x1b[32m✓\x1b[0m {concept}                                              \x1b[36m│\x1b[0m");
             }
             println!("\x1b[36m│\x1b[0m                                                               \x1b[36m│\x1b[0m");
         }
 
-        println!("\x1b[1;36m└───────────────────────────────────────────────────────────────┘\x1b[0m");
+        println!(
+            "\x1b[1;36m└───────────────────────────────────────────────────────────────┘\x1b[0m"
+        );
         println!();
     }
 
@@ -586,7 +595,9 @@ impl KaidoShell {
 
         let assessment = self.skill_detector.assess(&progress);
 
-        println!("\x1b[1;36m┌─ Skill Assessment ───────────────────────────────────────────┐\x1b[0m");
+        println!(
+            "\x1b[1;36m┌─ Skill Assessment ───────────────────────────────────────────┐\x1b[0m"
+        );
         println!("\x1b[36m│\x1b[0m                                                               \x1b[36m│\x1b[0m");
         println!(
             "\x1b[36m│\x1b[0m  Level: \x1b[1m{:<20}\x1b[0m                            \x1b[36m│\x1b[0m",
@@ -619,15 +630,16 @@ impl KaidoShell {
 
         let recommended = assessment.level.recommended_verbosity();
         let mode_str = match self.config.verbosity_mode {
-            VerbosityMode::Auto => format!("Auto ({:?})", recommended),
-            VerbosityMode::Fixed(v) => format!("Fixed ({:?})", v),
+            VerbosityMode::Auto => format!("Auto ({recommended:?})"),
+            VerbosityMode::Fixed(v) => format!("Fixed ({v:?})"),
         };
         println!(
-            "\x1b[36m│\x1b[0m  Verbosity mode: \x1b[1m{}\x1b[0m                             \x1b[36m│\x1b[0m",
-            mode_str
+            "\x1b[36m│\x1b[0m  Verbosity mode: \x1b[1m{mode_str}\x1b[0m                             \x1b[36m│\x1b[0m"
         );
         println!("\x1b[36m│\x1b[0m                                                               \x1b[36m│\x1b[0m");
-        println!("\x1b[1;36m└───────────────────────────────────────────────────────────────┘\x1b[0m");
+        println!(
+            "\x1b[1;36m└───────────────────────────────────────────────────────────────┘\x1b[0m"
+        );
         println!();
     }
 
@@ -650,7 +662,10 @@ impl KaidoShell {
         self.session_stats.record_command(command);
         self.add_to_command_history(command);
 
-        let result = self.pty.execute(command).await
+        let result = self
+            .pty
+            .execute(command)
+            .await
             .context("Failed to execute command")?;
 
         // Print the output
@@ -703,11 +718,13 @@ impl KaidoShell {
             }
 
             // Track error in session stats
-            self.session_stats.record_error(error_info.error_type.name());
+            self.session_stats
+                .record_error(error_info.error_type.name());
 
             // Display AI-powered guidance (or fallback to pattern-based)
             if self.config.ai_enabled {
-                self.display_ai_guidance(command, &result, &error_info).await;
+                self.display_ai_guidance(command, &result, &error_info)
+                    .await;
             } else {
                 self.display_mentor_block(&error_info);
             }
@@ -732,7 +749,12 @@ impl KaidoShell {
     }
 
     /// Display AI-powered guidance for errors
-    async fn display_ai_guidance(&self, command: &str, result: &PtyExecutionResult, error_info: &ErrorInfo) {
+    async fn display_ai_guidance(
+        &self,
+        command: &str,
+        result: &PtyExecutionResult,
+        error_info: &ErrorInfo,
+    ) {
         // Build context for AI
         let prompt = self.build_error_explanation_prompt(command, result, error_info);
 
@@ -759,7 +781,7 @@ impl KaidoShell {
                     } else {
                         line.to_string()
                     };
-                    println!("\x1b[38;5;147m│\x1b[0m  {:<56}  \x1b[38;5;147m│\x1b[0m", truncated);
+                    println!("\x1b[38;5;147m│\x1b[0m  {truncated:<56}  \x1b[38;5;147m│\x1b[0m");
                 }
 
                 println!("\x1b[38;5;147m│\x1b[0m                                                              \x1b[38;5;147m│\x1b[0m");
@@ -769,15 +791,22 @@ impl KaidoShell {
             Err(e) => {
                 // Clear the "analyzing" line and fallback to pattern-based
                 print!("\r\x1b[K");
-                log::debug!("AI explanation failed, using fallback: {}", e);
+                log::debug!("AI explanation failed, using fallback: {e}");
                 self.display_mentor_block(error_info);
             }
         }
     }
 
     /// Build prompt for AI error explanation
-    fn build_error_explanation_prompt(&self, command: &str, result: &PtyExecutionResult, error_info: &ErrorInfo) -> String {
-        let recent_commands = self.command_history.iter()
+    fn build_error_explanation_prompt(
+        &self,
+        command: &str,
+        result: &PtyExecutionResult,
+        error_info: &ErrorInfo,
+    ) -> String {
+        let recent_commands = self
+            .command_history
+            .iter()
             .rev()
             .take(5)
             .rev()
@@ -813,7 +842,10 @@ Explain this error in a helpful, educational way:
 Keep your response concise (under 10 lines). Be friendly and encouraging.
 Do NOT use markdown formatting. Use plain text only."#,
             command = command,
-            exit_code = result.exit_code.map(|c| c.to_string()).unwrap_or_else(|| "unknown".to_string()),
+            exit_code = result
+                .exit_code
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "unknown".to_string()),
             error_type = error_info.error_type.name(),
             output = output_preview,
             recent_commands = recent_commands,
@@ -827,8 +859,7 @@ Do NOT use markdown formatting. Use plain text only."#,
 
 This resolved a previous error. Suggest ONE helpful next step they might want to try.
 Keep it to a single short sentence. Be encouraging.
-Do NOT use markdown. Plain text only."#,
-            command = command
+Do NOT use markdown. Plain text only."#
         );
 
         if let Ok(response) = self.ai_manager.infer(&prompt).await {
@@ -843,7 +874,7 @@ Do NOT use markdown. Plain text only."#,
     /// Display mentor guidance for detected errors (fallback, pattern-based)
     fn display_mentor_block(&self, error: &ErrorInfo) {
         let output = self.mentor_display.render(error);
-        print!("{}", output);
+        print!("{output}");
     }
 
     /// Save history to file
@@ -902,7 +933,7 @@ mod tests {
     #[test]
     fn test_handle_builtin_exit() {
         let mut shell = KaidoShell::new().unwrap();
-        assert!(shell.is_running() == false); // Not running until run() is called
+        assert!(!shell.is_running()); // Not running until run() is called
 
         // Simulate running state
         shell.running = true;

@@ -62,7 +62,7 @@ impl JsonRpcError {
     pub fn parse_error(message: &str) -> Self {
         Self {
             code: -32700,
-            message: format!("Parse error: {}", message),
+            message: format!("Parse error: {message}"),
             data: None,
         }
     }
@@ -71,7 +71,7 @@ impl JsonRpcError {
     pub fn invalid_request(message: &str) -> Self {
         Self {
             code: -32600,
-            message: format!("Invalid request: {}", message),
+            message: format!("Invalid request: {message}"),
             data: None,
         }
     }
@@ -80,7 +80,7 @@ impl JsonRpcError {
     pub fn method_not_found(method: &str) -> Self {
         Self {
             code: -32601,
-            message: format!("Method not found: {}", method),
+            message: format!("Method not found: {method}"),
             data: None,
         }
     }
@@ -89,7 +89,7 @@ impl JsonRpcError {
     pub fn invalid_params(message: &str) -> Self {
         Self {
             code: -32602,
-            message: format!("Invalid params: {}", message),
+            message: format!("Invalid params: {message}"),
             data: None,
         }
     }
@@ -98,7 +98,7 @@ impl JsonRpcError {
     pub fn internal_error(message: &str) -> Self {
         Self {
             code: -32603,
-            message: format!("Internal error: {}", message),
+            message: format!("Internal error: {message}"),
             data: None,
         }
     }

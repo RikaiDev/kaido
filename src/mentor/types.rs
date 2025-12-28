@@ -3,6 +3,7 @@
 // These types represent detected errors and provide context
 // for generating educational guidance.
 
+use std::fmt;
 use std::path::PathBuf;
 
 /// Classification of error types
@@ -80,14 +81,14 @@ impl ErrorType {
     /// Determine error type from exit code
     pub fn from_exit_code(code: i32) -> Self {
         match code {
-            1 => Self::Unknown,           // General error
-            2 => Self::InvalidArgument,   // Misuse of command
-            126 => Self::PermissionDenied, // Permission problem
-            127 => Self::CommandNotFound,  // Command not found
-            128 => Self::Unknown,          // Invalid exit argument
-            130 => Self::Unknown,          // Ctrl+C (not really an error)
-            137 => Self::OutOfMemory,      // Often OOM killer (SIGKILL)
-            139 => Self::Unknown,          // Segfault
+            1 => Self::Unknown,               // General error
+            2 => Self::InvalidArgument,       // Misuse of command
+            126 => Self::PermissionDenied,    // Permission problem
+            127 => Self::CommandNotFound,     // Command not found
+            128 => Self::Unknown,             // Invalid exit argument
+            130 => Self::Unknown,             // Ctrl+C (not really an error)
+            137 => Self::OutOfMemory,         // Often OOM killer (SIGKILL)
+            139 => Self::Unknown,             // Segfault
             _ if code > 128 => Self::Unknown, // Killed by signal
             _ => Self::Unknown,
         }
@@ -126,19 +127,18 @@ impl SourceLocation {
         self.column = Some(column);
         self
     }
+}
 
-    /// Format as "file:line:column" or "file:line" or just "file"
-    pub fn to_string(&self) -> String {
-        let mut s = self.file.display().to_string();
+impl fmt::Display for SourceLocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.file.display())?;
         if let Some(line) = self.line {
-            s.push(':');
-            s.push_str(&line.to_string());
+            write!(f, ":{line}")?;
             if let Some(col) = self.column {
-                s.push(':');
-                s.push_str(&col.to_string());
+                write!(f, ":{col}")?;
             }
         }
-        s
+        Ok(())
     }
 }
 
@@ -237,8 +237,7 @@ mod tests {
 
     #[test]
     fn test_source_location_no_column() {
-        let loc = SourceLocation::new("/etc/nginx/nginx.conf")
-            .with_line(42);
+        let loc = SourceLocation::new("/etc/nginx/nginx.conf").with_line(42);
 
         assert_eq!(loc.to_string(), "/etc/nginx/nginx.conf:42");
     }
@@ -260,12 +259,7 @@ mod tests {
 
     #[test]
     fn test_error_info_interrupt() {
-        let info = ErrorInfo::new(
-            ErrorType::Unknown,
-            130,
-            "",
-            "sleep 100",
-        );
+        let info = ErrorInfo::new(ErrorType::Unknown, 130, "", "sleep 100");
 
         assert!(info.is_interrupt());
         assert!(!info.is_real_error());

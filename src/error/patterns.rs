@@ -1,5 +1,5 @@
+use crate::tools::{ErrorExplanation, RiskLevel, Solution};
 use regex::Regex;
-use crate::tools::{ErrorExplanation, Solution, RiskLevel};
 
 /// Error pattern for matching
 pub struct ErrorPattern {
@@ -21,7 +21,7 @@ impl PatternMatcher {
         matcher.init_patterns();
         matcher
     }
-    
+
     /// Initialize all error patterns
     /// IMPORTANT: More specific patterns should come first!
     fn init_patterns(&mut self) {
@@ -51,7 +51,7 @@ impl PatternMatcher {
                 },
             ],
         });
-        
+
         // MySQL ERROR 1064: SQL syntax error (AFTER drush pattern)
         self.add_pattern(ErrorPattern {
             regex: Regex::new(r"(?i)ERROR\s+1064").unwrap(),
@@ -71,7 +71,7 @@ impl PatternMatcher {
                 },
             ],
         });
-        
+
         // kubectl permission denied
         self.add_pattern(ErrorPattern {
             regex: Regex::new(r"(?i)(forbidden|User.*cannot)").unwrap(),
@@ -91,7 +91,7 @@ impl PatternMatcher {
                 },
             ],
         });
-        
+
         // Docker daemon not running
         self.add_pattern(ErrorPattern {
             regex: Regex::new(r"Cannot connect to the Docker daemon").unwrap(),
@@ -116,7 +116,7 @@ impl PatternMatcher {
                 },
             ],
         });
-        
+
         // MySQL ERROR 1045: Access denied
         self.add_pattern(ErrorPattern {
             regex: Regex::new(r"ERROR 1045|Access denied").unwrap(),
@@ -136,7 +136,7 @@ impl PatternMatcher {
                 },
             ],
         });
-        
+
         // kubectl context not set
         self.add_pattern(ErrorPattern {
             regex: Regex::new(r"current-context is not set").unwrap(),
@@ -156,7 +156,7 @@ impl PatternMatcher {
                 },
             ],
         });
-        
+
         // Docker image not found
         self.add_pattern(ErrorPattern {
             regex: Regex::new(r"Unable to find image|No such image").unwrap(),
@@ -177,37 +177,41 @@ impl PatternMatcher {
             ],
         });
     }
-    
+
     pub fn add_pattern(&mut self, pattern: ErrorPattern) {
         self.patterns.push(pattern);
     }
-    
+
     /// Match error against patterns
     pub fn match_pattern(&self, error: &str) -> Option<ErrorExplanation> {
         for pattern in &self.patterns {
             if pattern.regex.is_match(error) {
                 log::info!("Matched error pattern: {}", pattern.error_type);
-                
+
                 // Extract filename from error if present (for drush sqlq case)
                 let filename = extract_filename_from_drush_error(error);
-                
+
                 // Clone and replace {filename} placeholder in solutions
-                let solutions: Vec<Solution> = pattern.solutions.iter().map(|sol| {
-                    let command = sol.command.as_ref().map(|cmd| {
-                        if let Some(ref fname) = filename {
-                            cmd.replace("{filename}", fname)
-                        } else {
-                            cmd.clone()
+                let solutions: Vec<Solution> = pattern
+                    .solutions
+                    .iter()
+                    .map(|sol| {
+                        let command = sol.command.as_ref().map(|cmd| {
+                            if let Some(ref fname) = filename {
+                                cmd.replace("{filename}", fname)
+                            } else {
+                                cmd.clone()
+                            }
+                        });
+
+                        Solution {
+                            description: sol.description.clone(),
+                            command,
+                            risk_level: sol.risk_level,
                         }
-                    });
-                    
-                    Solution {
-                        description: sol.description.clone(),
-                        command,
-                        risk_level: sol.risk_level,
-                    }
-                }).collect();
-                
+                    })
+                    .collect();
+
                 return Some(ErrorExplanation {
                     error_type: pattern.error_type.clone(),
                     reason: pattern.explanation_template.clone(),
@@ -250,10 +254,10 @@ mod tests {
     fn test_mysql_error_1064() {
         let matcher = PatternMatcher::new();
         let error = "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax";
-        
+
         let explanation = matcher.match_pattern(error);
         assert!(explanation.is_some());
-        
+
         let exp = explanation.unwrap();
         assert_eq!(exp.error_type, "SQL Syntax Error");
         assert!(!exp.solutions.is_empty());
@@ -263,24 +267,29 @@ mod tests {
     fn test_drush_sqlq_error() {
         let matcher = PatternMatcher::new();
         let error = "ERROR 1064 at line 1: drush sqlq database.mysql";
-        
+
         let explanation = matcher.match_pattern(error);
         assert!(explanation.is_some());
-        
+
         let exp = explanation.unwrap();
         assert_eq!(exp.error_type, "Drush SQL File Execution Error");
         assert_eq!(exp.solutions.len(), 3);
-        assert!(exp.solutions[0].command.as_ref().unwrap().contains("sql:cli"));
+        assert!(exp.solutions[0]
+            .command
+            .as_ref()
+            .unwrap()
+            .contains("sql:cli"));
     }
 
     #[test]
     fn test_kubectl_permission_error() {
         let matcher = PatternMatcher::new();
-        let error = "Error from server (Forbidden): kubectl get pods forbidden: User cannot list resource";
-        
+        let error =
+            "Error from server (Forbidden): kubectl get pods forbidden: User cannot list resource";
+
         let explanation = matcher.match_pattern(error);
         assert!(explanation.is_some());
-        
+
         let exp = explanation.unwrap();
         assert_eq!(exp.error_type, "Kubernetes RBAC Permission Denied");
     }
@@ -289,22 +298,21 @@ mod tests {
     fn test_docker_daemon_error() {
         let matcher = PatternMatcher::new();
         let error = "Cannot connect to the Docker daemon at unix:///var/run/docker.sock";
-        
+
         let explanation = matcher.match_pattern(error);
         assert!(explanation.is_some());
-        
+
         let exp = explanation.unwrap();
         assert_eq!(exp.error_type, "Docker Daemon Not Running");
         assert!(exp.solutions.len() >= 2);
     }
-    
+
     #[test]
     fn test_no_match() {
         let matcher = PatternMatcher::new();
         let error = "Some random error that doesn't match any pattern";
-        
+
         let explanation = matcher.match_pattern(error);
         assert!(explanation.is_none());
     }
 }
-

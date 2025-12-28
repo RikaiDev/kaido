@@ -166,7 +166,7 @@ impl SkillDetector {
             name: "Error Diversity".to_string(),
             value,
             weight: 0.15,
-            description: format!("{} different error types encountered", unique_types),
+            description: format!("{unique_types} different error types encountered"),
         }
     }
 
@@ -185,7 +185,7 @@ impl SkillDetector {
             name: "Concept Breadth".to_string(),
             value,
             weight: 0.25,
-            description: format!("{} concepts encountered", concept_count),
+            description: format!("{concept_count} concepts encountered"),
         }
     }
 
@@ -230,9 +230,10 @@ impl Default for SkillDetector {
 }
 
 /// Verbosity mode setting
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum VerbosityMode {
     /// Automatically adjust based on skill level
+    #[default]
     Auto,
     /// Fixed verbosity level
     Fixed(Verbosity),
@@ -245,12 +246,6 @@ impl VerbosityMode {
             VerbosityMode::Auto => skill_level.recommended_verbosity(),
             VerbosityMode::Fixed(v) => *v,
         }
-    }
-}
-
-impl Default for VerbosityMode {
-    fn default() -> Self {
-        VerbosityMode::Auto
     }
 }
 
@@ -343,7 +338,15 @@ mod tests {
                 ("Config Error", 3),
                 ("Timeout", 2),
             ],
-            vec!["commands", "permissions", "network", "config", "docker", "kubernetes", "nginx"],
+            vec![
+                "commands",
+                "permissions",
+                "network",
+                "config",
+                "docker",
+                "kubernetes",
+                "nginx",
+            ],
         );
 
         let assessment = detector.assess(&progress);
@@ -352,9 +355,18 @@ mod tests {
 
     #[test]
     fn test_skill_level_verbosity() {
-        assert_eq!(SkillLevel::Beginner.recommended_verbosity(), Verbosity::Verbose);
-        assert_eq!(SkillLevel::Intermediate.recommended_verbosity(), Verbosity::Normal);
-        assert_eq!(SkillLevel::Advanced.recommended_verbosity(), Verbosity::Compact);
+        assert_eq!(
+            SkillLevel::Beginner.recommended_verbosity(),
+            Verbosity::Verbose
+        );
+        assert_eq!(
+            SkillLevel::Intermediate.recommended_verbosity(),
+            Verbosity::Normal
+        );
+        assert_eq!(
+            SkillLevel::Advanced.recommended_verbosity(),
+            Verbosity::Compact
+        );
     }
 
     #[test]

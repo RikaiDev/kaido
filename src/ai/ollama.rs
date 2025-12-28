@@ -1,9 +1,9 @@
 // Ollama AI Backend - Local LLM inference via Ollama REST API
+use crate::config::OllamaConfig;
+use crate::tools::{LLMBackend, LLMResponse};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use crate::config::OllamaConfig;
-use crate::tools::{LLMBackend, LLMResponse};
 
 /// Ollama API request structure
 #[derive(Debug, Serialize)]
@@ -62,7 +62,10 @@ impl OllamaBackend {
         let response = self.client.get(&url).send().await?;
 
         if !response.status().is_success() {
-            return Err(anyhow::anyhow!("Ollama not available at {}", self.config.base_url));
+            return Err(anyhow::anyhow!(
+                "Ollama not available at {}",
+                self.config.base_url
+            ));
         }
 
         #[derive(Deserialize)]
@@ -221,7 +224,7 @@ impl LLMBackend for OllamaBackend {
                         self.config.timeout_seconds
                     )
                 } else {
-                    anyhow::anyhow!("Ollama request failed: {}", e)
+                    anyhow::anyhow!("Ollama request failed: {e}")
                 }
             })?;
 
@@ -241,11 +244,7 @@ impl LLMBackend for OllamaBackend {
                 return Err(anyhow::anyhow!("Ollama error: {}", err.error));
             }
 
-            return Err(anyhow::anyhow!(
-                "Ollama API error ({}): {}",
-                status,
-                error_text
-            ));
+            return Err(anyhow::anyhow!("Ollama API error ({status}): {error_text}"));
         }
 
         let ollama_response: OllamaResponse = response.json().await?;
@@ -271,13 +270,11 @@ fn extract_command(text: &str) -> Option<String> {
         if let Some(end) = text[start + 3..].find("```") {
             let code = &text[start + 3..start + 3 + end];
             // Skip language marker
-            let code = code.lines()
+            let code = code
+                .lines()
                 .skip_while(|line| {
                     let trimmed = line.trim();
-                    trimmed.is_empty() ||
-                    trimmed == "bash" ||
-                    trimmed == "sh" ||
-                    trimmed == "shell"
+                    trimmed.is_empty() || trimmed == "bash" || trimmed == "sh" || trimmed == "shell"
                 })
                 .collect::<Vec<_>>()
                 .join("\n");

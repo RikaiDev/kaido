@@ -154,7 +154,7 @@ impl MentorDisplay {
 
         // Explanation (wrapped)
         for line in Self::wrap_text(&guidance.explanation, inner_width - 4) {
-            output.push_str(&self.render_line(width, &format!("  {}", line)));
+            output.push_str(&self.render_line(width, &format!("  {line}")));
         }
 
         output.push_str(&self.render_empty_line(width));
@@ -221,18 +221,21 @@ impl MentorDisplay {
         let underline_len = key_display.len().min(inner_width - 12);
         output.push_str(&self.render_line(
             width,
-            &format!("       {}{}{}", c.dim(), "~".repeat(underline_len), c.reset()),
+            &format!(
+                "       {}{}{}",
+                c.dim(),
+                "~".repeat(underline_len),
+                c.reset()
+            ),
         ));
 
         output.push_str(&self.render_empty_line(width));
 
         // Explanation
-        output.push_str(&self.render_line(
-            width,
-            &format!("  {}This means:{}", c.dim(), c.reset()),
-        ));
+        output
+            .push_str(&self.render_line(width, &format!("  {}This means:{}", c.dim(), c.reset())));
         for line in Self::wrap_text(&guidance.explanation, inner_width - 6) {
-            output.push_str(&self.render_line(width, &format!("    {}", line)));
+            output.push_str(&self.render_line(width, &format!("    {line}")));
         }
 
         output.push_str(&self.render_empty_line(width));
@@ -249,10 +252,9 @@ impl MentorDisplay {
 
         // Next steps
         if !guidance.next_steps.is_empty() {
-            output.push_str(&self.render_line(
-                width,
-                &format!("  {}Next steps:{}", c.dim(), c.reset()),
-            ));
+            output.push_str(
+                &self.render_line(width, &format!("  {}Next steps:{}", c.dim(), c.reset())),
+            );
             for (i, step) in guidance.next_steps.iter().take(4).enumerate() {
                 let step_text = if let Some(ref cmd) = step.command {
                     format!("{}{}{}", c.command(), cmd, c.reset())
@@ -482,7 +484,12 @@ impl MentorDisplay {
         let underline_len = key_display.len().min(inner_width - 12);
         output.push_str(&self.render_line(
             width,
-            &format!("       {}{}{}", c.dim(), "~".repeat(underline_len), c.reset()),
+            &format!(
+                "       {}{}{}",
+                c.dim(),
+                "~".repeat(underline_len),
+                c.reset()
+            ),
         ));
 
         // Empty line
@@ -490,12 +497,11 @@ impl MentorDisplay {
 
         // Error explanation
         if let Some(explanation) = self.get_error_explanation(error) {
-            output.push_str(&self.render_line(
-                width,
-                &format!("  {}This means:{}", c.dim(), c.reset()),
-            ));
+            output.push_str(
+                &self.render_line(width, &format!("  {}This means:{}", c.dim(), c.reset())),
+            );
             for line in Self::wrap_text(&explanation, inner_width - 6) {
-                output.push_str(&self.render_line(width, &format!("    {}", line)));
+                output.push_str(&self.render_line(width, &format!("    {line}")));
             }
             output.push_str(&self.render_empty_line(width));
         }
@@ -521,12 +527,7 @@ impl MentorDisplay {
         if let Some(search) = self.get_search_suggestion(error) {
             output.push_str(&self.render_line(
                 width,
-                &format!(
-                    "  {}Search:{} {}",
-                    c.search(),
-                    c.reset(),
-                    search
-                ),
+                &format!("  {}Search:{} {}", c.search(), c.reset(), search),
             ));
             output.push_str(&self.render_empty_line(width));
         }
@@ -534,10 +535,9 @@ impl MentorDisplay {
         // Next steps
         let steps = self.get_next_steps(error);
         if !steps.is_empty() {
-            output.push_str(&self.render_line(
-                width,
-                &format!("  {}Next steps:{}", c.dim(), c.reset()),
-            ));
+            output.push_str(
+                &self.render_line(width, &format!("  {}Next steps:{}", c.dim(), c.reset())),
+            );
             for (i, step) in steps.iter().enumerate() {
                 let step_display = Self::truncate(step, inner_width - 8);
                 output.push_str(&self.render_line(
@@ -669,11 +669,12 @@ impl MentorDisplay {
 
         match error.error_type {
             ErrorType::CommandNotFound => {
-                let cmd = error.key_message
+                let cmd = error
+                    .key_message
                     .split_whitespace()
                     .last()
                     .unwrap_or("command");
-                Some(format!("which {} or brew install {}", cmd, cmd))
+                Some(format!("which {cmd} or brew install {cmd}"))
             }
             ErrorType::PermissionDenied => Some("sudo !!".to_string()),
             ErrorType::FileNotFound => Some("ls -la to check path".to_string()),
@@ -739,11 +740,12 @@ impl MentorDisplay {
 
         match error.error_type {
             ErrorType::CommandNotFound => {
-                let cmd = error.key_message
+                let cmd = error
+                    .key_message
                     .split_whitespace()
                     .last()
                     .unwrap_or("command");
-                Some(format!("install {} macos/linux", cmd))
+                Some(format!("install {cmd} macos/linux"))
             }
             ErrorType::ConfigurationError => Some(format!(
                 "{} configuration syntax",
@@ -762,7 +764,8 @@ impl MentorDisplay {
 
         match error.error_type {
             ErrorType::CommandNotFound => {
-                let cmd = error.key_message
+                let cmd = error
+                    .key_message
                     .split_whitespace()
                     .last()
                     .unwrap_or("command");
@@ -803,11 +806,7 @@ impl MentorDisplay {
             _ => {
                 if let Some(ref loc) = error.source_location {
                     if let Some(line) = loc.line {
-                        vec![format!(
-                            "vim {} +{}",
-                            loc.file.display(),
-                            line
-                        )]
+                        vec![format!("vim {} +{}", loc.file.display(), line)]
                     } else {
                         vec![format!("vim {}", loc.file.display())]
                     }
@@ -824,12 +823,20 @@ impl MentorDisplay {
 
         match error.error_type {
             ErrorType::CommandNotFound => Some("PATH environment, package managers".to_string()),
-            ErrorType::PermissionDenied => Some("Unix permissions, sudo, file ownership".to_string()),
-            ErrorType::FileNotFound => Some("file paths, working directory, ls command".to_string()),
+            ErrorType::PermissionDenied => {
+                Some("Unix permissions, sudo, file ownership".to_string())
+            }
+            ErrorType::FileNotFound => {
+                Some("file paths, working directory, ls command".to_string())
+            }
             ErrorType::ConnectionRefused => Some("networking, ports, services".to_string()),
-            ErrorType::ConfigurationError => Some("configuration files, syntax checking".to_string()),
+            ErrorType::ConfigurationError => {
+                Some("configuration files, syntax checking".to_string())
+            }
             ErrorType::DockerError => Some("Docker containers, images, volumes".to_string()),
-            ErrorType::KubernetesError => Some("Kubernetes pods, deployments, services".to_string()),
+            ErrorType::KubernetesError => {
+                Some("Kubernetes pods, deployments, services".to_string())
+            }
             ErrorType::GitError => Some("Git workflow, branches, commits".to_string()),
             _ => None,
         }

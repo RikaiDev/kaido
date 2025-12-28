@@ -115,7 +115,10 @@ impl MentorEngine {
         // 4. Try LLM fallback if enabled and available
         if self.config.enable_llm {
             if let Some(llm) = llm {
-                log::info!("Using LLM fallback for unknown error: {}", error.key_message);
+                log::info!(
+                    "Using LLM fallback for unknown error: {}",
+                    error.key_message
+                );
                 match LLMMentor::generate(error, llm).await {
                     Ok(guidance) => {
                         // Cache the LLM response
@@ -125,7 +128,7 @@ impl MentorEngine {
                         return guidance;
                     }
                     Err(e) => {
-                        log::warn!("LLM fallback failed: {}", e);
+                        log::warn!("LLM fallback failed: {e}");
                     }
                 }
             }
@@ -161,8 +164,7 @@ impl MentorEngine {
         MentorGuidance::from_pattern(
             &error.key_message,
             format!(
-                "The command '{}' is not installed on this system, or it's not in your PATH.",
-                cmd
+                "The command '{cmd}' is not installed on this system, or it's not in your PATH."
             ),
         )
         .with_search(vec![
@@ -170,9 +172,12 @@ impl MentorEngine {
             format!("install {} linux", cmd),
         ])
         .with_steps(vec![
-            NextStep::with_command("Check if it's installed somewhere", format!("which {}", cmd)),
-            NextStep::with_command("Install on macOS", format!("brew install {}", cmd)),
-            NextStep::with_command("Install on Ubuntu/Debian", format!("sudo apt install {}", cmd)),
+            NextStep::with_command("Check if it's installed somewhere", format!("which {cmd}")),
+            NextStep::with_command("Install on macOS", format!("brew install {cmd}")),
+            NextStep::with_command(
+                "Install on Ubuntu/Debian",
+                format!("sudo apt install {cmd}"),
+            ),
             NextStep::with_command("Check your PATH", "echo $PATH"),
         ])
         .with_concepts(vec![
@@ -280,18 +285,15 @@ impl MentorEngine {
         MentorGuidance::from_pattern(
             &error.key_message,
             format!(
-                "There's an error in {}. Check the file for typos or invalid directives.",
-                location
+                "There's an error in {location}. Check the file for typos or invalid directives."
             ),
         )
-        .with_search(vec![
-            "configuration syntax".to_string(),
-        ])
+        .with_search(vec!["configuration syntax".to_string()])
         .with_steps(if let Some(ref loc) = error.source_location {
             let file = loc.file.display().to_string();
             let line = loc.line.unwrap_or(1);
             vec![
-                NextStep::with_command("Open file at error line", format!("vim {} +{}", file, line)),
+                NextStep::with_command("Open file at error line", format!("vim {file} +{line}")),
                 NextStep::new("Check for typos in the directive name"),
                 NextStep::new("Verify syntax matches documentation"),
             ]
@@ -301,9 +303,7 @@ impl MentorEngine {
                 NextStep::new("Compare with documentation examples"),
             ]
         })
-        .with_concepts(vec![
-            "Configuration file syntax".to_string(),
-        ])
+        .with_concepts(vec!["Configuration file syntax".to_string()])
     }
 
     fn guidance_syntax_error(&self, error: &ErrorInfo) -> MentorGuidance {
@@ -395,18 +395,14 @@ impl MentorEngine {
             NextStep::with_command("Check remotes", "git remote -v"),
             NextStep::with_command("Check branches", "git branch -a"),
         ])
-        .with_concepts(vec![
-            "Git workflow".to_string(),
-            "Git remotes".to_string(),
-        ])
+        .with_concepts(vec!["Git workflow".to_string(), "Git remotes".to_string()])
     }
 
     fn guidance_generic(&self, error: &ErrorInfo) -> MentorGuidance {
-        MentorGuidance::fallback(&error.key_message)
-            .with_steps(vec![
-                NextStep::new("Check the full error output above"),
-                NextStep::new("Search for the error message online"),
-            ])
+        MentorGuidance::fallback(&error.key_message).with_steps(vec![
+            NextStep::new("Check the full error output above"),
+            NextStep::new("Search for the error message online"),
+        ])
     }
 
     /// Extract command name from error message
@@ -432,7 +428,11 @@ impl MentorEngine {
                         0
                     };
                     if let Some(cmd) = parts.get(skip) {
-                        return cmd.split_whitespace().next().unwrap_or("command").to_string();
+                        return cmd
+                            .split_whitespace()
+                            .next()
+                            .unwrap_or("command")
+                            .to_string();
                     }
                 }
             }
@@ -441,16 +441,27 @@ impl MentorEngine {
         // Pattern: "command not found: foo"
         if parts.len() == 2 {
             if parts[0].contains("command not found") {
-                return parts[1].split_whitespace().next().unwrap_or("command").to_string();
+                return parts[1]
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("command")
+                    .to_string();
             }
             // Pattern: "foo: command not found"
             if parts[1].contains("command not found") || parts[1].contains("not found") {
-                return parts[0].split_whitespace().last().unwrap_or("command").to_string();
+                return parts[0]
+                    .split_whitespace()
+                    .last()
+                    .unwrap_or("command")
+                    .to_string();
             }
         }
 
         // Fallback: last word
-        msg.split_whitespace().last().unwrap_or("command").to_string()
+        msg.split_whitespace()
+            .last()
+            .unwrap_or("command")
+            .to_string()
     }
 
     /// Render guidance as formatted output
@@ -499,7 +510,10 @@ mod tests {
         let guidance = engine.generate_sync(&error);
 
         assert!(guidance.explanation.contains("permission"));
-        assert!(guidance.next_steps.iter().any(|s| s.command.as_ref().map_or(false, |c| c.contains("sudo"))));
+        assert!(guidance
+            .next_steps
+            .iter()
+            .any(|s| s.command.as_ref().is_some_and(|c| c.contains("sudo"))));
     }
 
     #[test]

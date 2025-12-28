@@ -5,14 +5,12 @@
 // - logger.rs: Write audit log entries
 // - query.rs: Query audit log (today, last week, production)
 
-pub mod schema;
-pub mod logger;
 pub mod agent_logger;
+pub mod logger;
 pub mod query;
+pub mod schema;
 
+pub use agent_logger::{AgentAuditLogger, AgentSessionDetail, AgentSessionSummary};
 pub use logger::{
-    AuditLogger, AuditContext, UserAction,
-    audit_entry_from_execution, audit_entry_cancelled,
+    audit_entry_cancelled, audit_entry_from_execution, AuditContext, AuditLogger, UserAction,
 };
-pub use agent_logger::{AgentAuditLogger, AgentSessionSummary, AgentSessionDetail};
-

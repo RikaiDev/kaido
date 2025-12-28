@@ -216,9 +216,7 @@ mod tests {
 
     #[test]
     fn test_prompt_builder_custom_prefix() {
-        let builder = PromptBuilder::new()
-            .no_colors()
-            .with_prefix("myshell");
+        let builder = PromptBuilder::new().no_colors().with_prefix("myshell");
         let prompt = builder.build();
 
         assert!(prompt.starts_with("myshell "));

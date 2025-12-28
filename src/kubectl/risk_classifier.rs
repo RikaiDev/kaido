@@ -20,10 +20,9 @@ impl RiskLevel {
             RiskLevel::High => "HIGH",
         }
     }
-    
-    
+
     /// Classify kubectl command by risk level
-    /// 
+    ///
     /// Classification rules from research.md:
     /// - HIGH: delete, drain, scale --replicas=0
     /// - MEDIUM: apply, create, patch, edit, scale (non-zero), rollout
@@ -31,22 +30,21 @@ impl RiskLevel {
     pub fn classify(command: &str) -> Self {
         // Normalize command for matching
         let cmd_lower = command.to_lowercase();
-        
+
         // HIGH risk: Destructive operations
         if cmd_lower.contains("delete") || cmd_lower.contains("drain") {
             return RiskLevel::High;
         }
-        
+
         // Special case: scale to 0 replicas is effectively a delete
-        if cmd_lower.contains("scale") && (
-            cmd_lower.contains("--replicas=0") || 
-            cmd_lower.contains("--replicas 0")
-        ) {
+        if cmd_lower.contains("scale")
+            && (cmd_lower.contains("--replicas=0") || cmd_lower.contains("--replicas 0"))
+        {
             return RiskLevel::High;
         }
-        
+
         // MEDIUM risk: State-modifying operations
-        if cmd_lower.contains("apply") 
+        if cmd_lower.contains("apply")
             || cmd_lower.contains("create")
             || cmd_lower.contains("patch")
             || cmd_lower.contains("edit")
@@ -58,11 +56,11 @@ impl RiskLevel {
         {
             return RiskLevel::Medium;
         }
-        
+
         // LOW risk: Read-only operations (default)
         RiskLevel::Low
     }
-    
+
     /// Check if this risk level requires confirmation
     pub fn requires_confirmation(&self) -> bool {
         match self {
@@ -124,10 +122,7 @@ mod tests {
 
     #[test]
     fn test_low_risk_classification() {
-        assert_eq!(
-            RiskLevel::classify("kubectl get pods"),
-            RiskLevel::Low
-        );
+        assert_eq!(RiskLevel::classify("kubectl get pods"), RiskLevel::Low);
         assert_eq!(
             RiskLevel::classify("kubectl describe service nginx"),
             RiskLevel::Low
@@ -136,10 +131,7 @@ mod tests {
             RiskLevel::classify("kubectl logs nginx-pod"),
             RiskLevel::Low
         );
-        assert_eq!(
-            RiskLevel::classify("kubectl top nodes"),
-            RiskLevel::Low
-        );
+        assert_eq!(RiskLevel::classify("kubectl top nodes"), RiskLevel::Low);
     }
 
     #[test]
@@ -156,4 +148,3 @@ mod tests {
         assert!(RiskLevel::High.requires_confirmation());
     }
 }
-

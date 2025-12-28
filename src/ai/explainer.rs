@@ -3,8 +3,8 @@
 //! Generates educational explanations for commands to help users learn
 //! what each command does and why it's useful.
 
-use anyhow::Result;
 use crate::tools::LLMBackend;
+use anyhow::Result;
 
 /// Generates educational explanations for commands
 pub struct CommandExplainer;
@@ -19,11 +19,7 @@ impl CommandExplainer {
     ///
     /// # Returns
     /// A formatted explanation string suitable for terminal display
-    pub async fn explain(
-        command: &str,
-        tool: &str,
-        llm: &dyn LLMBackend,
-    ) -> Result<String> {
+    pub async fn explain(command: &str, tool: &str, llm: &dyn LLMBackend) -> Result<String> {
         let prompt = Self::build_explain_prompt(command, tool);
         let response = llm.infer(&prompt).await?;
 
@@ -43,10 +39,10 @@ impl CommandExplainer {
 
         // Base command explanation
         let base_desc = Self::get_base_command_desc(base_cmd);
-        explanation.push_str(&format!("{} = \"{}\"\n\n", base_cmd, base_desc));
+        explanation.push_str(&format!("{base_cmd} = \"{base_desc}\"\n\n"));
 
         // Tool-specific context
-        explanation.push_str(&Self::get_tool_context(tool));
+        explanation.push_str(Self::get_tool_context(tool));
         explanation.push_str("\n\n");
 
         // Flag explanations
@@ -54,7 +50,7 @@ impl CommandExplainer {
         if !flags.is_empty() {
             explanation.push_str("Flags:\n");
             for (flag, desc) in flags {
-                explanation.push_str(&format!("  {} -> {}\n", flag, desc));
+                explanation.push_str(&format!("  {flag} -> {desc}\n"));
             }
             explanation.push('\n');
         }
@@ -113,42 +109,98 @@ impl CommandExplainer {
 
         match base_cmd {
             "kubectl" => {
-                if command.contains(" get ") { flags.push(("get".to_string(), "retrieve resources")); }
-                if command.contains(" describe ") { flags.push(("describe".to_string(), "show detailed info")); }
-                if command.contains(" logs ") { flags.push(("logs".to_string(), "fetch container logs")); }
-                if command.contains(" delete ") { flags.push(("delete".to_string(), "remove resources")); }
-                if command.contains(" apply ") { flags.push(("apply".to_string(), "create/update resources")); }
-                if command.contains(" -n ") { flags.push(("-n".to_string(), "specify namespace")); }
-                if command.contains(" -o wide") { flags.push(("-o wide".to_string(), "show more columns")); }
-                if command.contains(" -o yaml") { flags.push(("-o yaml".to_string(), "output as YAML")); }
-                if command.contains(" -o json") { flags.push(("-o json".to_string(), "output as JSON")); }
-                if command.contains(" -f ") { flags.push(("-f".to_string(), "use file")); }
-                if command.contains(" --all-namespaces") { flags.push(("--all-namespaces".to_string(), "across all namespaces")); }
+                if command.contains(" get ") {
+                    flags.push(("get".to_string(), "retrieve resources"));
+                }
+                if command.contains(" describe ") {
+                    flags.push(("describe".to_string(), "show detailed info"));
+                }
+                if command.contains(" logs ") {
+                    flags.push(("logs".to_string(), "fetch container logs"));
+                }
+                if command.contains(" delete ") {
+                    flags.push(("delete".to_string(), "remove resources"));
+                }
+                if command.contains(" apply ") {
+                    flags.push(("apply".to_string(), "create/update resources"));
+                }
+                if command.contains(" -n ") {
+                    flags.push(("-n".to_string(), "specify namespace"));
+                }
+                if command.contains(" -o wide") {
+                    flags.push(("-o wide".to_string(), "show more columns"));
+                }
+                if command.contains(" -o yaml") {
+                    flags.push(("-o yaml".to_string(), "output as YAML"));
+                }
+                if command.contains(" -o json") {
+                    flags.push(("-o json".to_string(), "output as JSON"));
+                }
+                if command.contains(" -f ") {
+                    flags.push(("-f".to_string(), "use file"));
+                }
+                if command.contains(" --all-namespaces") {
+                    flags.push(("--all-namespaces".to_string(), "across all namespaces"));
+                }
             }
             "docker" => {
-                if command.contains(" ps") { flags.push(("ps".to_string(), "list containers")); }
-                if command.contains(" images") { flags.push(("images".to_string(), "list images")); }
-                if command.contains(" logs ") { flags.push(("logs".to_string(), "fetch container logs")); }
-                if command.contains(" exec ") { flags.push(("exec".to_string(), "run command in container")); }
-                if command.contains(" -a") { flags.push(("-a".to_string(), "show all (including stopped)")); }
-                if command.contains(" -it ") { flags.push(("-it".to_string(), "interactive terminal")); }
-                if command.contains(" -d") { flags.push(("-d".to_string(), "run in background")); }
+                if command.contains(" ps") {
+                    flags.push(("ps".to_string(), "list containers"));
+                }
+                if command.contains(" images") {
+                    flags.push(("images".to_string(), "list images"));
+                }
+                if command.contains(" logs ") {
+                    flags.push(("logs".to_string(), "fetch container logs"));
+                }
+                if command.contains(" exec ") {
+                    flags.push(("exec".to_string(), "run command in container"));
+                }
+                if command.contains(" -a") {
+                    flags.push(("-a".to_string(), "show all (including stopped)"));
+                }
+                if command.contains(" -it ") {
+                    flags.push(("-it".to_string(), "interactive terminal"));
+                }
+                if command.contains(" -d") {
+                    flags.push(("-d".to_string(), "run in background"));
+                }
             }
             "lsof" => {
-                if command.contains(" -i") { flags.push(("-i".to_string(), "filter by network connection")); }
-                if command.contains(" -P") { flags.push(("-P".to_string(), "show port numbers (not names)")); }
-                if command.contains(" -n") { flags.push(("-n".to_string(), "skip DNS lookup (faster)")); }
+                if command.contains(" -i") {
+                    flags.push(("-i".to_string(), "filter by network connection"));
+                }
+                if command.contains(" -P") {
+                    flags.push(("-P".to_string(), "show port numbers (not names)"));
+                }
+                if command.contains(" -n") {
+                    flags.push(("-n".to_string(), "skip DNS lookup (faster)"));
+                }
             }
             "ss" => {
-                if command.contains(" -t") { flags.push(("-t".to_string(), "TCP connections only")); }
-                if command.contains(" -l") { flags.push(("-l".to_string(), "listening sockets only")); }
-                if command.contains(" -n") { flags.push(("-n".to_string(), "numeric output")); }
-                if command.contains(" -p") { flags.push(("-p".to_string(), "show process info")); }
+                if command.contains(" -t") {
+                    flags.push(("-t".to_string(), "TCP connections only"));
+                }
+                if command.contains(" -l") {
+                    flags.push(("-l".to_string(), "listening sockets only"));
+                }
+                if command.contains(" -n") {
+                    flags.push(("-n".to_string(), "numeric output"));
+                }
+                if command.contains(" -p") {
+                    flags.push(("-p".to_string(), "show process info"));
+                }
             }
             "nginx" => {
-                if command.contains(" -t") { flags.push(("-t".to_string(), "test configuration")); }
-                if command.contains(" -T") { flags.push(("-T".to_string(), "test and dump config")); }
-                if command.contains(" -s reload") { flags.push(("-s reload".to_string(), "reload configuration")); }
+                if command.contains(" -t") {
+                    flags.push(("-t".to_string(), "test configuration"));
+                }
+                if command.contains(" -T") {
+                    flags.push(("-T".to_string(), "test and dump config"));
+                }
+                if command.contains(" -s reload") {
+                    flags.push(("-s reload".to_string(), "reload configuration"));
+                }
             }
             _ => {}
         }
@@ -207,9 +259,7 @@ When to use: Finding port conflicts, identifying
 which service is listening on a port.
 
 Keep it concise (6-10 lines max). No markdown, no code blocks.
-Focus on teaching the CONCEPT, not just describing syntax."#,
-            tool = tool,
-            command = command
+Focus on teaching the CONCEPT, not just describing syntax."#
         )
     }
 

@@ -190,7 +190,8 @@ impl SummaryGenerator {
         for cmd in commands {
             match cmd.as_str() {
                 "ls" | "cd" | "pwd" => {
-                    if !suggestions.contains(&"Learn about file permissions with chmod".to_string()) {
+                    if !suggestions.contains(&"Learn about file permissions with chmod".to_string())
+                    {
                         suggestions.push("Learn about file permissions with chmod".to_string());
                     }
                 }
@@ -298,16 +299,17 @@ impl SummaryGenerator {
         let minutes = summary.duration.as_secs() / 60;
         let seconds = summary.duration.as_secs() % 60;
         let duration_str = if minutes > 0 {
-            format!("{} min {} sec", minutes, seconds)
+            format!("{minutes} min {seconds} sec")
         } else {
-            format!("{} seconds", seconds)
+            format!("{seconds} seconds")
         };
 
-        output.push_str("\n\x1b[1;36m╭─ SESSION SUMMARY ─────────────────────────────────────────╮\x1b[0m\n");
+        output.push_str(
+            "\n\x1b[1;36m╭─ SESSION SUMMARY ─────────────────────────────────────────╮\x1b[0m\n",
+        );
         output.push_str("\x1b[36m│\x1b[0m                                                            \x1b[36m│\x1b[0m\n");
         output.push_str(&format!(
-            "\x1b[36m│\x1b[0m  Duration: \x1b[1m{:<20}\x1b[0m                        \x1b[36m│\x1b[0m\n",
-            duration_str
+            "\x1b[36m│\x1b[0m  Duration: \x1b[1m{duration_str:<20}\x1b[0m                        \x1b[36m│\x1b[0m\n"
         ));
         output.push_str(&format!(
             "\x1b[36m│\x1b[0m  Commands executed: \x1b[1m{:<10}\x1b[0m                        \x1b[36m│\x1b[0m\n",
@@ -336,8 +338,7 @@ impl SummaryGenerator {
             output.push_str("\x1b[36m│\x1b[0m  \x1b[1m🔧 Tools Used:\x1b[0m                                           \x1b[36m│\x1b[0m\n");
             for (tool, count) in summary.tools_used.iter().take(3) {
                 output.push_str(&format!(
-                    "\x1b[36m│\x1b[0m    • {} ({} commands)                              \x1b[36m│\x1b[0m\n",
-                    tool, count
+                    "\x1b[36m│\x1b[0m    • {tool} ({count} commands)                              \x1b[36m│\x1b[0m\n"
                 ));
             }
             output.push_str("\x1b[36m│\x1b[0m                                                            \x1b[36m│\x1b[0m\n");
@@ -348,8 +349,7 @@ impl SummaryGenerator {
             output.push_str("\x1b[36m│\x1b[0m  \x1b[1m💡 Suggested Next Steps:\x1b[0m                                 \x1b[36m│\x1b[0m\n");
             for step in &summary.next_steps {
                 output.push_str(&format!(
-                    "\x1b[36m│\x1b[0m    • {:<50} \x1b[36m│\x1b[0m\n",
-                    step
+                    "\x1b[36m│\x1b[0m    • {step:<50} \x1b[36m│\x1b[0m\n"
                 ));
             }
             output.push_str("\x1b[36m│\x1b[0m                                                            \x1b[36m│\x1b[0m\n");
@@ -364,7 +364,9 @@ impl SummaryGenerator {
             output.push_str("\x1b[36m│\x1b[0m                                                            \x1b[36m│\x1b[0m\n");
         }
 
-        output.push_str("\x1b[1;36m╰────────────────────────────────────────────────────────────╯\x1b[0m\n");
+        output.push_str(
+            "\x1b[1;36m╰────────────────────────────────────────────────────────────╯\x1b[0m\n",
+        );
 
         output
     }

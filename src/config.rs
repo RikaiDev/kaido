@@ -112,7 +112,7 @@ impl Default for DisplayConfig {
 }
 
 /// Main configuration structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
     /// AI provider selection: auto, gemini, or ollama
     #[serde(default)]
@@ -129,26 +129,11 @@ pub struct Config {
     pub gemini_api_key: Option<String>,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            provider: AIProvider::default(),
-            ai: OpenAIConfig::default(),
-            ollama: OllamaConfig::default(),
-            audit: AuditConfig::default(),
-            safety: SafetyConfig::default(),
-            display: DisplayConfig::default(),
-            gemini_api_key: None,
-        }
-    }
-}
-
 impl Config {
-
     /// Load configuration from TOML file
     pub fn load() -> anyhow::Result<Self> {
         let config_path = Self::get_config_path()?;
-        
+
         if !config_path.exists() {
             return Ok(Self::default());
         }
@@ -161,7 +146,7 @@ impl Config {
     /// Save configuration to TOML file
     pub fn save(&self) -> anyhow::Result<()> {
         let config_path = Self::get_config_path()?;
-        
+
         // Create config directory if not exists
         if let Some(parent) = config_path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -169,7 +154,7 @@ impl Config {
 
         let contents = toml::to_string_pretty(self)?;
         std::fs::write(&config_path, contents)?;
-        
+
         // Set permissions to 600 (user read/write only) on Unix
         #[cfg(unix)]
         {
@@ -177,15 +162,15 @@ impl Config {
             let permissions = std::fs::Permissions::from_mode(0o600);
             std::fs::set_permissions(&config_path, permissions)?;
         }
-        
+
         Ok(())
     }
 
     /// Get config file path
     pub fn get_config_path() -> anyhow::Result<PathBuf> {
-        let home = dirs::home_dir()
-            .ok_or_else(|| anyhow::anyhow!("Cannot determine home directory"))?;
-        
+        let home =
+            dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Cannot determine home directory"))?;
+
         Ok(home.join(".kaido").join("config.toml"))
     }
 }

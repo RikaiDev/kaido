@@ -34,10 +34,7 @@ struct LLMNextStep {
 
 impl LLMMentor {
     /// Generate mentor guidance using LLM
-    pub async fn generate(
-        error: &ErrorInfo,
-        llm: &dyn LLMBackend,
-    ) -> Result<MentorGuidance> {
+    pub async fn generate(error: &ErrorInfo, llm: &dyn LLMBackend) -> Result<MentorGuidance> {
         let prompt = Self::build_prompt(error);
         let response = llm.infer(&prompt).await?;
 
@@ -122,8 +119,8 @@ Important:
                 })
             }
             Err(e) => {
-                log::warn!("Failed to parse LLM response as JSON: {}", e);
-                log::debug!("Response was: {}", response);
+                log::warn!("Failed to parse LLM response as JSON: {e}");
+                log::debug!("Response was: {response}");
 
                 // Return a basic guidance with the raw response as explanation
                 Ok(MentorGuidance {
@@ -182,7 +179,9 @@ Important:
                 .map(|i| block_start + i + 1)
                 .unwrap_or(block_start);
             if let Some(end) = response[content_start..].find("```") {
-                return response[content_start..content_start + end].trim().to_string();
+                return response[content_start..content_start + end]
+                    .trim()
+                    .to_string();
             }
         }
 
@@ -203,10 +202,7 @@ Important:
         let response = response.trim();
 
         // Take first paragraph or first 200 chars
-        let first_para = response
-            .split("\n\n")
-            .next()
-            .unwrap_or(response);
+        let first_para = response.split("\n\n").next().unwrap_or(response);
 
         if first_para.len() > 200 {
             format!("{}...", &first_para[..200])

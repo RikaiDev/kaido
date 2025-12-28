@@ -69,10 +69,7 @@ pub struct MentorGuidance {
 
 impl MentorGuidance {
     /// Create guidance from pattern matching
-    pub fn from_pattern(
-        key_message: impl Into<String>,
-        explanation: impl Into<String>,
-    ) -> Self {
+    pub fn from_pattern(key_message: impl Into<String>, explanation: impl Into<String>) -> Self {
         Self {
             key_message: key_message.into(),
             explanation: explanation.into(),
@@ -151,10 +148,8 @@ mod tests {
 
     #[test]
     fn test_guidance_from_pattern() {
-        let guidance = MentorGuidance::from_pattern(
-            "command not found",
-            "The command is not installed",
-        );
+        let guidance =
+            MentorGuidance::from_pattern("command not found", "The command is not installed");
         assert_eq!(guidance.source, GuidanceSource::Pattern);
     }
 

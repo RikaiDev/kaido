@@ -1,6 +1,6 @@
 // Audit logger implementation for kubectl command history
 use anyhow::Result;
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -73,40 +73,40 @@ pub struct AuditLogger {
 
 impl AuditLogger {
     /// Create new audit logger
-    /// 
+    ///
     /// Initializes database connection, applies schema, and runs retention policy
     pub fn new(database_path: &str) -> Result<Self> {
         // Open connection
         let conn = Connection::open(database_path)?;
-        
+
         // Set PRAGMA for better performance
         conn.execute_batch(
             "PRAGMA journal_mode=WAL;
              PRAGMA synchronous=NORMAL;
              PRAGMA foreign_keys=ON;
-             PRAGMA temp_store=MEMORY;"
+             PRAGMA temp_store=MEMORY;",
         )?;
-        
+
         // Initialize schema (from schema.rs)
         crate::audit::schema::initialize_schema(&conn)?;
-        
+
         // Clean old entries (retention policy: 90 days)
         Self::clean_old_entries_internal(&conn, 90)?;
-        
-        Ok(Self { 
-            conn: Arc::new(Mutex::new(conn))
+
+        Ok(Self {
+            conn: Arc::new(Mutex::new(conn)),
         })
     }
-    
+
     /// Log a command execution
-    /// 
+    ///
     /// This function is non-blocking - it will log errors but not fail the command execution
     pub fn log_execution(&self, entry: AuditLogEntry) -> Result<i64> {
         // Truncate stdout/stderr to 10KB
         let stdout = entry.stdout.as_ref().map(|s| truncate_output(s));
         let stderr = entry.stderr.as_ref().map(|s| truncate_output(s));
-        
-        // Insert into database        
+
+        // Insert into database
         let conn = self.conn.lock().unwrap();
         conn.execute(
             "INSERT INTO audit_log (
@@ -144,36 +144,34 @@ impl AuditLogger {
                 entry.user_action.as_str(),
             ],
         )?;
-        
+
         Ok(conn.last_insert_rowid())
     }
-    
+
     /// Clean entries older than specified days
-    /// 
+    ///
     /// This is called on startup to enforce retention policy
     pub fn clean_old_entries(&self, days: u32) -> Result<usize> {
         let conn = self.conn.lock().unwrap();
         Self::clean_old_entries_internal(&conn, days)
     }
-    
+
     fn clean_old_entries_internal(conn: &Connection, days: u32) -> Result<usize> {
-        let cutoff_timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)?
-            .as_secs() as i64
+        let cutoff_timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64
             - (days as i64 * 24 * 60 * 60);
-        
+
         let deleted = conn.execute(
             "DELETE FROM audit_log WHERE timestamp < ?",
             params![cutoff_timestamp],
         )?;
-        
+
         if deleted > 0 {
             log::info!("Cleaned {deleted} old audit log entries (older than {days} days)");
         }
-        
+
         Ok(deleted)
     }
-    
+
     /// Get current Unix timestamp
     pub fn current_timestamp() -> i64 {
         SystemTime::now()
@@ -181,7 +179,7 @@ impl AuditLogger {
             .expect("System time is before Unix epoch")
             .as_secs() as i64
     }
-    
+
     /// Get current system username
     pub fn current_user() -> String {
         users::get_current_username()
@@ -305,7 +303,7 @@ mod tests {
     fn test_log_execution() {
         let temp_db = NamedTempFile::new().unwrap();
         let logger = AuditLogger::new(temp_db.path().to_str().unwrap()).unwrap();
-        
+
         let entry = AuditLogEntry {
             timestamp: AuditLogger::current_timestamp(),
             user_id: "testuser".to_string(),
@@ -323,7 +321,7 @@ mod tests {
             execution_duration_ms: Some(123),
             user_action: UserAction::Executed,
         };
-        
+
         let result = logger.log_execution(entry);
         assert!(result.is_ok());
         assert!(result.unwrap() > 0);
@@ -333,7 +331,7 @@ mod tests {
     fn test_clean_old_entries() {
         let temp_db = NamedTempFile::new().unwrap();
         let logger = AuditLogger::new(temp_db.path().to_str().unwrap()).unwrap();
-        
+
         // Insert old entry (timestamp from 100 days ago)
         let old_timestamp = AuditLogger::current_timestamp() - (100 * 24 * 60 * 60);
         let entry = AuditLogEntry {
@@ -353,9 +351,9 @@ mod tests {
             execution_duration_ms: Some(100),
             user_action: UserAction::Executed,
         };
-        
+
         logger.log_execution(entry).unwrap();
-        
+
         // Clean entries older than 90 days
         let deleted = logger.clean_old_entries(90).unwrap();
         assert_eq!(deleted, 1);

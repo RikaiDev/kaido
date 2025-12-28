@@ -5,25 +5,24 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
-pub mod registry;
-pub mod kubectl_tool;
-pub mod docker;
-pub mod sql;
-pub mod drush;
-pub mod nginx;
 pub mod apache2;
+pub mod docker;
+pub mod drush;
+pub mod kubectl_tool;
 pub mod network;
+pub mod nginx;
+pub mod registry;
+pub mod sql;
 
 // Re-export for convenience
-pub use registry::ToolRegistry;
-pub use kubectl_tool::KubectlTool;
-pub use docker::DockerTool;
-pub use sql::{SQLTool, SQLDialect};
-pub use drush::DrushTool;
-pub use nginx::NginxTool;
 pub use apache2::Apache2Tool;
+pub use docker::DockerTool;
+pub use drush::DrushTool;
+pub use kubectl_tool::KubectlTool;
 pub use network::NetworkTool;
-
+pub use nginx::NginxTool;
+pub use registry::ToolRegistry;
+pub use sql::{SQLDialect, SQLTool};
 
 /// Risk level for command operations (4-tier system)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -47,14 +46,14 @@ impl RiskLevel {
             RiskLevel::Critical => "CRITICAL",
         }
     }
-    
+
     pub fn requires_confirmation(&self) -> bool {
         match self {
             RiskLevel::Low => false,
             RiskLevel::Medium | RiskLevel::High | RiskLevel::Critical => true,
         }
     }
-    
+
     pub fn requires_typed_confirmation(&self, is_production: bool) -> bool {
         match self {
             RiskLevel::High | RiskLevel::Critical if is_production => true,
@@ -75,16 +74,16 @@ impl std::fmt::Display for RiskLevel {
 pub struct Translation {
     /// Generated command
     pub command: String,
-    
+
     /// AI confidence score (0-100)
     pub confidence: u8,
-    
+
     /// AI reasoning/explanation
     pub reasoning: String,
-    
+
     /// Tool name that generated this command
     pub tool_name: String,
-    
+
     /// Files that need to exist for this command to work
     pub requires_files: Vec<PathBuf>,
 }
@@ -94,13 +93,13 @@ pub struct Translation {
 pub struct ExecutionResult {
     /// Exit code from command
     pub exit_code: i32,
-    
+
     /// Standard output
     pub stdout: String,
-    
+
     /// Standard error
     pub stderr: String,
-    
+
     /// Execution duration
     pub duration: Duration,
 }
@@ -111,7 +110,7 @@ pub struct ToolContext {
     pub working_directory: PathBuf,
     pub environment_vars: HashMap<String, String>,
     pub user: String,
-    
+
     // Tool-specific contexts
     pub kubectl_context: Option<crate::kubectl::KubectlContext>,
     pub docker_host: Option<String>,
@@ -146,9 +145,12 @@ pub struct DatabaseConnection {
 impl DatabaseConnection {
     /// Get connection string for display
     pub fn connection_string(&self) -> String {
-        format!("{}@{}:{}/{}", self.username, self.host, self.port, self.database)
+        format!(
+            "{}@{}:{}/{}",
+            self.username, self.host, self.port, self.database
+        )
     }
-    
+
     /// Check if this is a production database
     pub fn is_prod(&self) -> bool {
         self.is_production
@@ -160,19 +162,19 @@ impl DatabaseConnection {
 pub struct ErrorExplanation {
     /// Error type (brief classification)
     pub error_type: String,
-    
+
     /// Human-readable reason
     pub reason: String,
-    
+
     /// Possible causes (2-3 items)
     pub possible_causes: Vec<String>,
-    
+
     /// Solutions with commands
     pub solutions: Vec<Solution>,
-    
+
     /// Recommended solution index (0-based)
     pub recommended_solution: usize,
-    
+
     /// Documentation links (optional)
     pub documentation_links: Vec<String>,
 }
@@ -190,25 +192,25 @@ pub struct Solution {
 pub struct ToolCall {
     /// Unique ID for this tool call
     pub id: String,
-    
+
     /// Tool name (kubectl, docker, nginx, etc.)
     pub tool_name: String,
-    
+
     /// Command to execute
     pub command: String,
-    
+
     /// Purpose/reason for this call
     pub purpose: String,
-    
+
     /// Risk level of this command
     pub risk_level: RiskLevel,
-    
+
     /// Whether this is safe to auto-execute (diagnostic commands)
     pub auto_executable: bool,
-    
+
     /// Execution result (filled after execution)
     pub result: Option<ExecutionResult>,
-    
+
     /// Timestamp
     pub timestamp: std::time::SystemTime,
 }
@@ -227,24 +229,27 @@ impl ToolCall {
             timestamp: std::time::SystemTime::now(),
         }
     }
-    
+
     /// Create a diagnostic tool call (auto-executable)
     pub fn diagnostic(tool_name: String, command: String, purpose: String) -> Self {
         let mut call = Self::new(tool_name, command, purpose, RiskLevel::Low);
         call.auto_executable = true;
         call
     }
-    
+
     /// Set execution result
     pub fn set_result(&mut self, result: ExecutionResult) {
         self.result = Some(result);
     }
-    
+
     /// Check if execution was successful
     pub fn is_successful(&self) -> bool {
-        self.result.as_ref().map(|r| r.exit_code == 0).unwrap_or(false)
+        self.result
+            .as_ref()
+            .map(|r| r.exit_code == 0)
+            .unwrap_or(false)
     }
-    
+
     /// Get output (stdout or stderr)
     pub fn get_output(&self) -> Option<String> {
         self.result.as_ref().map(|r| {
@@ -269,19 +274,20 @@ impl ToolExecutor {
             registry: ToolRegistry::new(),
         }
     }
-    
+
     /// Execute a tool call
     pub async fn execute(&self, tool_call: &mut ToolCall) -> Result<()> {
-        let tool = self.registry
+        let tool = self
+            .registry
             .get_tool(&tool_call.tool_name)
             .ok_or_else(|| anyhow::anyhow!("Tool not found: {}", tool_call.tool_name))?;
-        
+
         let result = tool.execute(&tool_call.command).await?;
         tool_call.set_result(result);
-        
+
         Ok(())
     }
-    
+
     /// Execute multiple tool calls in sequence
     pub async fn execute_batch(&self, tool_calls: &mut [ToolCall]) -> Result<()> {
         for call in tool_calls.iter_mut() {
@@ -289,12 +295,12 @@ impl ToolExecutor {
         }
         Ok(())
     }
-    
+
     /// Filter tool calls that are safe to auto-execute
     pub fn filter_auto_executable(tool_calls: &[ToolCall]) -> Vec<&ToolCall> {
         tool_calls.iter().filter(|c| c.auto_executable).collect()
     }
-    
+
     /// Filter tool calls that require confirmation
     pub fn filter_requires_confirmation(tool_calls: &[ToolCall]) -> Vec<&ToolCall> {
         tool_calls.iter().filter(|c| !c.auto_executable).collect()
@@ -326,15 +332,15 @@ pub struct LLMResponse {
 pub trait Tool: Send + Sync {
     /// Tool name (kubectl, docker, mysql, drush)
     fn name(&self) -> &'static str;
-    
+
     /// Detect if input belongs to this tool
     /// Returns confidence score 0.0-1.0
-    /// 
+    ///
     /// Examples:
     /// - "get pods" → kubectl returns 0.9
     /// - "docker ps" → docker returns 1.0
     fn detect_intent(&self, input: &str) -> f32;
-    
+
     /// Translate natural language to command
     async fn translate(
         &self,
@@ -342,16 +348,16 @@ pub trait Tool: Send + Sync {
         context: &ToolContext,
         llm: &dyn LLMBackend,
     ) -> Result<Translation>;
-    
+
     /// Classify risk level of a command
     fn classify_risk(&self, command: &str, context: &ToolContext) -> RiskLevel;
-    
+
     /// Execute the command
     async fn execute(&self, command: &str) -> Result<ExecutionResult>;
-    
+
     /// Explain error (optional implementation)
     fn explain_error(&self, _error: &str) -> Option<ErrorExplanation> {
-        None  // Default: no special error explanation
+        None // Default: no special error explanation
     }
 }
 
@@ -384,4 +390,3 @@ mod tests {
         assert!(ctx.working_directory.exists() || ctx.working_directory == PathBuf::from("/"));
     }
 }
-

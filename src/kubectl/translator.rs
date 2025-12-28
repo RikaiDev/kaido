@@ -5,10 +5,10 @@ use serde::{Deserialize, Serialize};
 pub struct TranslationResult {
     /// Generated kubectl command
     pub kubectl_command: String,
-    
+
     /// AI confidence score (0-100)
     pub confidence_score: u8,
-    
+
     /// AI reasoning/explanation
     pub reasoning: String,
 }
@@ -22,18 +22,18 @@ impl TranslationResult {
             reasoning,
         }
     }
-    
+
     /// Check if confidence is low (below threshold)
     pub fn is_low_confidence(&self, threshold: u8) -> bool {
         self.confidence_score < threshold
     }
-    
+
     /// Check if command is valid (starts with "kubectl ")
     #[cfg(test)]
     pub fn is_valid_command(&self) -> bool {
         self.kubectl_command.trim().starts_with("kubectl ")
     }
-    
+
     /// Check if reasoning contains clarification request
     #[cfg(test)]
     pub fn needs_clarification(&self) -> bool {
@@ -52,7 +52,7 @@ mod tests {
             95,
             "Standard pod listing in current namespace".to_string(),
         );
-        
+
         assert!(result.is_valid_command());
         assert!(!result.is_low_confidence(70));
         assert!(!result.needs_clarification());
@@ -65,20 +65,15 @@ mod tests {
             40,
             "NEEDS_CLARIFICATION: Which pod?".to_string(),
         );
-        
+
         assert!(result.is_low_confidence(70));
         assert!(result.needs_clarification());
     }
 
     #[test]
     fn test_invalid_command() {
-        let result = TranslationResult::new(
-            "docker ps".to_string(),
-            50,
-            "Wrong tool".to_string(),
-        );
-        
+        let result = TranslationResult::new("docker ps".to_string(), 50, "Wrong tool".to_string());
+
         assert!(!result.is_valid_command());
     }
 }
-

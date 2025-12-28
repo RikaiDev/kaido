@@ -126,15 +126,15 @@ impl SignalHandler {
         let tx_clone = self.resize_notify.as_ref().unwrap().clone();
 
         tokio::spawn(async move {
-            let mut sigwinch = match tokio::signal::unix::signal(
-                tokio::signal::unix::SignalKind::window_change(),
-            ) {
-                Ok(s) => s,
-                Err(e) => {
-                    log::warn!("Failed to setup SIGWINCH handler: {}", e);
-                    return;
-                }
-            };
+            let mut sigwinch =
+                match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::window_change())
+                {
+                    Ok(s) => s,
+                    Err(e) => {
+                        log::warn!("Failed to setup SIGWINCH handler: {e}");
+                        return;
+                    }
+                };
 
             loop {
                 sigwinch.recv().await;

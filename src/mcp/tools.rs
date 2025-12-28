@@ -124,7 +124,7 @@ impl KaidoTools {
             "kaido_get_context" => self.get_context().await,
             "kaido_list_tools" => self.list_tools(),
             "kaido_check_risk" => self.check_risk(arguments),
-            _ => ToolCallResult::error(format!("Unknown tool: {}", name)),
+            _ => ToolCallResult::error(format!("Unknown tool: {name}")),
         }
     }
 
@@ -141,7 +141,7 @@ impl KaidoTools {
 
         // Build diagnostic information
         let mut diagnosis = String::new();
-        diagnosis.push_str(&format!("# Kaido Diagnosis: {}\n\n", problem));
+        diagnosis.push_str(&format!("# Kaido Diagnosis: {problem}\n\n"));
 
         // Detect relevant tool
         if let Some(tool) = self.registry.detect_tool(problem) {
@@ -155,8 +155,8 @@ impl KaidoTools {
             diagnosis.push_str("## Diagnostic Results\n\n");
 
             for (cmd_name, cmd) in diagnostics {
-                diagnosis.push_str(&format!("### {}\n", cmd_name));
-                diagnosis.push_str(&format!("```\n$ {}\n", cmd));
+                diagnosis.push_str(&format!("### {cmd_name}\n"));
+                diagnosis.push_str(&format!("```\n$ {cmd}\n"));
 
                 match self.run_command(&cmd) {
                     Ok(output) => {
@@ -168,7 +168,7 @@ impl KaidoTools {
                         diagnosis.push_str(&truncated);
                     }
                     Err(e) => {
-                        diagnosis.push_str(&format!("Error: {}", e));
+                        diagnosis.push_str(&format!("Error: {e}"));
                     }
                 }
                 diagnosis.push_str("\n```\n\n");
@@ -193,14 +193,12 @@ impl KaidoTools {
             return ToolCallResult::error("Missing required parameter: command");
         }
 
-        let tool_name = arguments
-            .get("tool")
-            .and_then(|v| v.as_str());
+        let tool_name = arguments.get("tool").and_then(|v| v.as_str());
 
         // Validate tool if specified
         if let Some(name) = tool_name {
             if name != "shell" && self.registry.get_tool(name).is_none() {
-                return ToolCallResult::error(format!("Unknown tool: {}", name));
+                return ToolCallResult::error(format!("Unknown tool: {name}"));
             }
         }
 
@@ -210,10 +208,9 @@ impl KaidoTools {
         if matches!(risk, RiskLevel::Critical) {
             return ToolCallResult::error(format!(
                 "Command has CRITICAL risk level and cannot be auto-executed.\n\
-                 Command: {}\n\n\
+                 Command: {command}\n\n\
                  This command could cause significant damage. Please review carefully \
-                 and execute manually if intended.",
-                command
+                 and execute manually if intended."
             ));
         }
 
@@ -223,11 +220,15 @@ impl KaidoTools {
                 let result = format!(
                     "$ {}\n\n{}",
                     command,
-                    if output.is_empty() { "(no output)" } else { &output }
+                    if output.is_empty() {
+                        "(no output)"
+                    } else {
+                        &output
+                    }
                 );
                 ToolCallResult::success(result)
             }
-            Err(e) => ToolCallResult::error(format!("Execution failed: {}", e)),
+            Err(e) => ToolCallResult::error(format!("Execution failed: {e}")),
         }
     }
 
@@ -243,10 +244,7 @@ impl KaidoTools {
         }
 
         // Get tool name from command
-        let tool_name = command
-            .split_whitespace()
-            .next()
-            .unwrap_or("unknown");
+        let tool_name = command.split_whitespace().next().unwrap_or("unknown");
 
         // Generate explanation using pattern-based explainer
         let explanation = CommandExplainer::explain_sync(command, tool_name);
@@ -267,17 +265,22 @@ impl KaidoTools {
             context.push_str("- Kubernetes: Not configured or kubectl not found\n");
         }
 
-        if let Ok(output) = self.run_command("kubectl config view --minify -o jsonpath='{.contexts[0].context.namespace}'") {
+        if let Ok(output) = self.run_command(
+            "kubectl config view --minify -o jsonpath='{.contexts[0].context.namespace}'",
+        ) {
             let ns = output.trim().trim_matches('\'');
             if !ns.is_empty() {
-                context.push_str(&format!("- Default Namespace: `{}`\n", ns));
+                context.push_str(&format!("- Default Namespace: `{ns}`\n"));
             }
         }
 
         // Docker status
         context.push_str("\n## Docker\n");
         if let Ok(output) = self.run_command("docker info --format '{{.ServerVersion}}'") {
-            context.push_str(&format!("- Docker Version: `{}`\n", output.trim().trim_matches('\'')));
+            context.push_str(&format!(
+                "- Docker Version: `{}`\n",
+                output.trim().trim_matches('\'')
+            ));
 
             if let Ok(containers) = self.run_command("docker ps -q | wc -l") {
                 context.push_str(&format!("- Running Containers: {}\n", containers.trim()));
@@ -288,12 +291,14 @@ impl KaidoTools {
 
         // System info
         context.push_str("\n## System\n");
-        context.push_str(&format!("- Working Directory: `{}`\n",
+        context.push_str(&format!(
+            "- Working Directory: `{}`\n",
             std::env::current_dir()
                 .map(|p| p.display().to_string())
                 .unwrap_or_else(|_| "unknown".to_string())
         ));
-        context.push_str(&format!("- User: `{}`\n",
+        context.push_str(&format!(
+            "- User: `{}`\n",
             users::get_current_username()
                 .and_then(|u| u.into_string().ok())
                 .unwrap_or_else(|| "unknown".to_string())
@@ -302,7 +307,7 @@ impl KaidoTools {
         // Available tools
         context.push_str("\n## Available Kaido Tools\n");
         for tool in self.registry.list_tools() {
-            context.push_str(&format!("- `{}`\n", tool));
+            context.push_str(&format!("- `{tool}`\n"));
         }
 
         ToolCallResult::success(context)
@@ -314,21 +319,39 @@ impl KaidoTools {
         output.push_str("# Kaido Available Tools\n\n");
 
         let tools_info = vec![
-            ("kubectl", "Kubernetes cluster management - pods, deployments, services, etc."),
-            ("docker", "Container management - images, containers, networks, volumes"),
+            (
+                "kubectl",
+                "Kubernetes cluster management - pods, deployments, services, etc.",
+            ),
+            (
+                "docker",
+                "Container management - images, containers, networks, volumes",
+            ),
             ("nginx", "Nginx web server - config testing, reload, status"),
-            ("apache2", "Apache web server - config testing, modules, status"),
-            ("network", "Network diagnostics - ports, connections, DNS, curl"),
-            ("mysql", "MySQL database operations - queries, status, variables"),
-            ("drush", "Drupal management - cache, config, database operations"),
+            (
+                "apache2",
+                "Apache web server - config testing, modules, status",
+            ),
+            (
+                "network",
+                "Network diagnostics - ports, connections, DNS, curl",
+            ),
+            (
+                "mysql",
+                "MySQL database operations - queries, status, variables",
+            ),
+            (
+                "drush",
+                "Drupal management - cache, config, database operations",
+            ),
         ];
 
         for (name, desc) in tools_info {
             let available = self.registry.get_tool(name).is_some();
             let status = if available { "available" } else { "registered" };
-            output.push_str(&format!("## {}\n", name));
-            output.push_str(&format!("- **Status:** {}\n", status));
-            output.push_str(&format!("- **Description:** {}\n\n", desc));
+            output.push_str(&format!("## {name}\n"));
+            output.push_str(&format!("- **Status:** {status}\n"));
+            output.push_str(&format!("- **Description:** {desc}\n\n"));
         }
 
         ToolCallResult::success(output)
@@ -345,40 +368,50 @@ impl KaidoTools {
             return ToolCallResult::error("Missing required parameter: command");
         }
 
-        let tool_name = arguments
-            .get("tool")
-            .and_then(|v| v.as_str());
+        let tool_name = arguments.get("tool").and_then(|v| v.as_str());
 
         let risk = self.assess_risk(command, tool_name);
         let ctx = ToolContext::default();
 
         let mut output = String::new();
-        output.push_str(&format!("# Risk Assessment\n\n"));
-        output.push_str(&format!("**Command:** `{}`\n\n", command));
+        output.push_str("# Risk Assessment\n\n");
+        output.push_str(&format!("**Command:** `{command}`\n\n"));
         output.push_str(&format!("**Risk Level:** {}\n\n", risk.as_str()));
 
         output.push_str("## Risk Explanation\n\n");
         match risk {
             RiskLevel::Low => {
-                output.push_str("This is a **read-only** operation that does not modify any state.\n");
+                output.push_str(
+                    "This is a **read-only** operation that does not modify any state.\n",
+                );
                 output.push_str("- Safe to execute automatically\n");
                 output.push_str("- No confirmation required\n");
             }
             RiskLevel::Medium => {
-                output.push_str("This operation **modifies state** but can typically be reversed.\n");
+                output
+                    .push_str("This operation **modifies state** but can typically be reversed.\n");
                 output.push_str("- Requires confirmation before execution\n");
                 output.push_str("- Changes can usually be rolled back\n");
             }
             RiskLevel::High => {
-                output.push_str("This is a **destructive** operation that may be difficult to reverse.\n");
+                output.push_str(
+                    "This is a **destructive** operation that may be difficult to reverse.\n",
+                );
                 output.push_str("- Requires explicit confirmation\n");
                 output.push_str("- Consider backup before proceeding\n");
-                if ctx.kubectl_context.as_ref().map(|k| k.environment_type == EnvironmentType::Production).unwrap_or(false) {
+                if ctx
+                    .kubectl_context
+                    .as_ref()
+                    .map(|k| k.environment_type == EnvironmentType::Production)
+                    .unwrap_or(false)
+                {
                     output.push_str("- **WARNING:** Production environment detected!\n");
                 }
             }
             RiskLevel::Critical => {
-                output.push_str("This is a **critical** operation with potentially severe consequences.\n");
+                output.push_str(
+                    "This is a **critical** operation with potentially severe consequences.\n",
+                );
                 output.push_str("- Requires typed confirmation (type the resource name)\n");
                 output.push_str("- Cannot be automatically executed\n");
                 output.push_str("- Strongly recommend backup and review\n");
@@ -399,7 +432,7 @@ impl KaidoTools {
         let output = Command::new(parts[0])
             .args(&parts[1..])
             .output()
-            .map_err(|e| format!("Failed to execute: {}", e))?;
+            .map_err(|e| format!("Failed to execute: {e}"))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -407,7 +440,7 @@ impl KaidoTools {
         if output.status.success() {
             Ok(stdout.to_string())
         } else if !stderr.is_empty() {
-            Ok(format!("{}\n{}", stdout, stderr))
+            Ok(format!("{stdout}\n{stderr}"))
         } else {
             Ok(stdout.to_string())
         }
@@ -426,11 +459,17 @@ impl KaidoTools {
         } else {
             // Default risk assessment for unknown commands
             let cmd_lower = command.to_lowercase();
-            if cmd_lower.contains("rm ") || cmd_lower.contains("delete") ||
-               cmd_lower.contains("drop ") || cmd_lower.contains("truncate") {
+            if cmd_lower.contains("rm ")
+                || cmd_lower.contains("delete")
+                || cmd_lower.contains("drop ")
+                || cmd_lower.contains("truncate")
+            {
                 RiskLevel::High
-            } else if cmd_lower.contains("update") || cmd_lower.contains("insert") ||
-                      cmd_lower.contains("create") || cmd_lower.contains("modify") {
+            } else if cmd_lower.contains("update")
+                || cmd_lower.contains("insert")
+                || cmd_lower.contains("create")
+                || cmd_lower.contains("modify")
+            {
                 RiskLevel::Medium
             } else {
                 RiskLevel::Low
@@ -443,17 +482,29 @@ impl KaidoTools {
         let mut commands = Vec::new();
 
         // Kubernetes diagnostics
-        if problem_lower.contains("pod") || problem_lower.contains("kubernetes") ||
-           problem_lower.contains("k8s") || problem_lower.contains("deployment") {
-            commands.push(("Pod Status", "kubectl get pods --all-namespaces".to_string()));
+        if problem_lower.contains("pod")
+            || problem_lower.contains("kubernetes")
+            || problem_lower.contains("k8s")
+            || problem_lower.contains("deployment")
+        {
+            commands.push((
+                "Pod Status",
+                "kubectl get pods --all-namespaces".to_string(),
+            ));
             if problem_lower.contains("crash") || problem_lower.contains("restart") {
-                commands.push(("Recent Events", "kubectl get events --sort-by=.lastTimestamp | tail -20".to_string()));
+                commands.push((
+                    "Recent Events",
+                    "kubectl get events --sort-by=.lastTimestamp | tail -20".to_string(),
+                ));
             }
         }
 
         // Nginx diagnostics
-        if problem_lower.contains("nginx") || problem_lower.contains("502") ||
-           problem_lower.contains("504") || problem_lower.contains("web server") {
+        if problem_lower.contains("nginx")
+            || problem_lower.contains("502")
+            || problem_lower.contains("504")
+            || problem_lower.contains("web server")
+        {
             commands.push(("Nginx Status", "systemctl status nginx".to_string()));
             commands.push(("Nginx Config Test", "nginx -t".to_string()));
         }
@@ -465,8 +516,11 @@ impl KaidoTools {
         }
 
         // Network diagnostics
-        if problem_lower.contains("port") || problem_lower.contains("connection") ||
-           problem_lower.contains("network") || problem_lower.contains("bind") {
+        if problem_lower.contains("port")
+            || problem_lower.contains("connection")
+            || problem_lower.contains("network")
+            || problem_lower.contains("bind")
+        {
             commands.push(("Listening Ports", "ss -tlnp".to_string()));
         }
 
@@ -516,8 +570,8 @@ impl Default for KaidoTools {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::types::ToolContent;
+    use super::*;
 
     #[test]
     fn test_tool_definitions() {
@@ -564,10 +618,9 @@ mod tests {
         let result = tools.list_tools();
 
         assert!(!result.is_error);
-        if let ToolContent::Text { text } = &result.content[0] {
-            assert!(text.contains("kubectl"));
-            assert!(text.contains("docker"));
-            assert!(text.contains("nginx"));
-        }
+        let ToolContent::Text { text } = &result.content[0];
+        assert!(text.contains("kubectl"));
+        assert!(text.contains("docker"));
+        assert!(text.contains("nginx"));
     }
 }

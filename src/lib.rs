@@ -18,12 +18,11 @@ pub mod utils;
 
 // Re-export commonly used items
 pub use agent::{AgentLoop, AgentState, AgentStep, StepType};
-pub use tools::{Tool, ToolRegistry, RiskLevel};
-pub use error::PatternMatcher;
-pub use commands::{CommandEngine, CommandResult};
 pub use ai::{AIManager, GeminiBackend, OllamaBackend};
-pub use shell::{KaidoShell, ShellConfig, PromptBuilder, PtyExecutor, PtyExecutionResult};
-pub use mentor::{ErrorDetector, ErrorInfo, ErrorType, MentorDisplay, Verbosity};
+pub use commands::{CommandEngine, CommandResult};
+pub use error::PatternMatcher;
 pub use learning::{LearningProgress, LearningTracker};
-pub use mcp::{McpServer, KaidoTools};
-
+pub use mcp::{KaidoTools, McpServer};
+pub use mentor::{ErrorDetector, ErrorInfo, ErrorType, MentorDisplay, Verbosity};
+pub use shell::{KaidoShell, PromptBuilder, PtyExecutionResult, PtyExecutor, ShellConfig};
+pub use tools::{RiskLevel, Tool, ToolRegistry};

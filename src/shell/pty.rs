@@ -107,8 +107,7 @@ impl PtyExecutor {
         let start = Instant::now();
 
         // Open a new PTY pair
-        let (mut pty, pts) = pty_process::open()
-            .context("Failed to open PTY")?;
+        let (mut pty, pts) = pty_process::open().context("Failed to open PTY")?;
 
         // Set terminal size
         pty.resize(pty_process::Size::new(self.size.0, self.size.1))
@@ -121,8 +120,7 @@ impl PtyExecutor {
             .arg(command);
 
         // Spawn the child process attached to the PTY
-        let mut child = cmd.spawn(pts)
-            .context("Failed to spawn command in PTY")?;
+        let mut child = cmd.spawn(pts).context("Failed to spawn command in PTY")?;
 
         // Read output from PTY
         let mut output = Vec::new();
@@ -147,7 +145,7 @@ impl PtyExecutor {
                                 break;
                             }
                             // Log error but continue trying
-                            log::debug!("PTY read error: {}", e);
+                            log::debug!("PTY read error: {e}");
                         }
                     }
                 }
@@ -202,7 +200,7 @@ impl PtyExecutor {
             Ok(result) => result,
             Err(_) => {
                 Ok(PtyExecutionResult {
-                    output: format!("Command timed out after {:?}", timeout),
+                    output: format!("Command timed out after {timeout:?}"),
                     exit_code: Some(124), // Standard timeout exit code
                     duration: timeout,
                     command: command.to_string(),
@@ -246,7 +244,10 @@ mod tests {
     async fn test_execute_with_colors() {
         let executor = PtyExecutor::new();
         // Use printf to output ANSI color codes
-        let result = executor.execute("printf '\\033[31mred\\033[0m'").await.unwrap();
+        let result = executor
+            .execute("printf '\\033[31mred\\033[0m'")
+            .await
+            .unwrap();
 
         assert!(result.success());
         // Should contain ANSI escape codes
@@ -287,7 +288,10 @@ mod tests {
     #[tokio::test]
     async fn test_multiline_output() {
         let executor = PtyExecutor::new();
-        let result = executor.execute("echo line1; echo line2; echo line3").await.unwrap();
+        let result = executor
+            .execute("echo line1; echo line2; echo line3")
+            .await
+            .unwrap();
 
         assert!(result.success());
         assert!(result.output.contains("line1"));

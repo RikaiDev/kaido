@@ -105,7 +105,7 @@ impl GuidanceCache {
             .unwrap()
             .as_secs() as i64;
 
-        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{}", e))?;
+        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
 
         conn.execute(
             "INSERT OR REPLACE INTO guidance_cache (cache_key, error_type, guidance_json, created_at)
@@ -124,7 +124,7 @@ impl GuidanceCache {
             .as_secs() as i64
             - (retention_days as i64 * 24 * 60 * 60);
 
-        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{}", e))?;
+        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
 
         let deleted = conn.execute(
             "DELETE FROM guidance_cache WHERE created_at < ?",
@@ -136,13 +136,10 @@ impl GuidanceCache {
 
     /// Get cache statistics
     pub fn stats(&self) -> Result<CacheStats> {
-        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{}", e))?;
+        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
 
-        let total_entries: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM guidance_cache",
-            [],
-            |row| row.get(0),
-        )?;
+        let total_entries: i64 =
+            conn.query_row("SELECT COUNT(*) FROM guidance_cache", [], |row| row.get(0))?;
 
         let total_hits: i64 = conn.query_row(
             "SELECT COALESCE(SUM(hit_count), 0) FROM guidance_cache",
@@ -179,11 +176,8 @@ mod tests {
     }
 
     fn create_test_guidance() -> MentorGuidance {
-        MentorGuidance::from_pattern(
-            "kubectl not found",
-            "The kubectl command is not installed",
-        )
-        .with_search(vec!["install kubectl".to_string()])
+        MentorGuidance::from_pattern("kubectl not found", "The kubectl command is not installed")
+            .with_search(vec!["install kubectl".to_string()])
     }
 
     #[test]

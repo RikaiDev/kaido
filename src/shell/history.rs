@@ -19,8 +19,7 @@ pub fn ensure_history_dir() -> Result<PathBuf> {
     let history_path = default_history_path();
 
     if let Some(parent) = history_path.parent() {
-        std::fs::create_dir_all(parent)
-            .context("Failed to create ~/.kaido directory")?;
+        std::fs::create_dir_all(parent).context("Failed to create ~/.kaido directory")?;
     }
 
     Ok(history_path)

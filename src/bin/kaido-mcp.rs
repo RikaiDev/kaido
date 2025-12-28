@@ -33,13 +33,9 @@ fn main() {
 
     // Initialize logging
     if args.verbose {
-        env_logger::Builder::from_env(
-            env_logger::Env::default().default_filter_or("debug")
-        ).init();
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
     } else {
-        env_logger::Builder::from_env(
-            env_logger::Env::default().default_filter_or("warn")
-        ).init();
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
     }
 
     eprintln!("Kaido MCP Server v{}", env!("CARGO_PKG_VERSION"));
@@ -48,7 +44,7 @@ fn main() {
     let mut server = McpServer::new();
 
     if let Err(e) = server.run() {
-        eprintln!("Server error: {}", e);
+        eprintln!("Server error: {e}");
         std::process::exit(1);
     }
 }

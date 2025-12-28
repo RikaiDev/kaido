@@ -137,12 +137,12 @@ pub async fn translate_to_kubectl(
     // Build prompts
     let system_prompt = build_system_prompt(context);
     let user_prompt = build_user_prompt(input, context);
-    
+
     // Create HTTP client with timeout
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(config.timeout_seconds))
         .build()?;
-    
+
     // Build request
     let request_body = OpenAIRequest {
         model: config.model.clone(),
@@ -162,7 +162,7 @@ pub async fn translate_to_kubectl(
             format_type: "json_object".to_string(),
         },
     };
-    
+
     // Make API call with retry on network error
     let mut last_error = None;
     for attempt in 0..=1 {
@@ -170,7 +170,7 @@ pub async fn translate_to_kubectl(
             log::info!("Retrying OpenAI API call (attempt {}/2)", attempt + 1);
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         }
-        
+
         match make_openai_request(&client, &config.base_url, &config.api_key, &request_body).await {
             Ok(response) => {
                 // Parse response
@@ -187,7 +187,7 @@ pub async fn translate_to_kubectl(
             }
         }
     }
-    
+
     // If all retries failed, return error with fallback suggestion
     Err(handle_openai_error(last_error.unwrap()))
 }
@@ -206,29 +206,33 @@ async fn make_openai_request(
         .json(request_body)
         .send()
         .await?;
-    
+
     let status = response.status();
-    
+
     if !status.is_success() {
-        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
         return Err(anyhow::anyhow!("OpenAI API error ({status}): {error_text}"));
     }
-    
+
     let openai_response: OpenAIResponse = response.json().await?;
     Ok(openai_response)
 }
 
 /// Parse OpenAI response to TranslationResult
 fn parse_translation_response(response: &OpenAIResponse) -> anyhow::Result<TranslationResult> {
-    let content_json = &response.choices
+    let content_json = &response
+        .choices
         .first()
         .ok_or_else(|| anyhow::anyhow!("No choices in OpenAI response"))?
         .message
         .content;
-    
+
     let translation: TranslationContent = serde_json::from_str(content_json)
         .map_err(|e| anyhow::anyhow!("Failed to parse OpenAI JSON response: {e}"))?;
-    
+
     // Validate command starts with "kubectl "
     if !translation.command.trim().starts_with("kubectl ") {
         return Err(anyhow::anyhow!(
@@ -236,7 +240,7 @@ fn parse_translation_response(response: &OpenAIResponse) -> anyhow::Result<Trans
             translation.command
         ));
     }
-    
+
     // Validate confidence range
     if translation.confidence > 100 {
         return Err(anyhow::anyhow!(
@@ -244,7 +248,7 @@ fn parse_translation_response(response: &OpenAIResponse) -> anyhow::Result<Trans
             translation.confidence
         ));
     }
-    
+
     Ok(TranslationResult::new(
         translation.command,
         translation.confidence,
@@ -255,39 +259,39 @@ fn parse_translation_response(response: &OpenAIResponse) -> anyhow::Result<Trans
 /// Check if error is retryable (network errors only)
 fn is_retryable_error(error: &anyhow::Error) -> bool {
     let error_string = error.to_string().to_lowercase();
-    error_string.contains("timeout") 
-        || error_string.contains("connection") 
+    error_string.contains("timeout")
+        || error_string.contains("connection")
         || error_string.contains("network")
 }
 
 /// Handle OpenAI API errors with user-friendly messages
 fn handle_openai_error(error: anyhow::Error) -> anyhow::Error {
     let error_string = error.to_string();
-    
+
     if error_string.contains("401") || error_string.contains("Incorrect API key") {
         return anyhow::anyhow!(
             "Invalid OpenAI API key. Check your configuration in ~/.kaido/config.toml\nOriginal error: {error}"
         );
     }
-    
+
     if error_string.contains("429") || error_string.contains("Rate limit") {
         return anyhow::anyhow!(
             "OpenAI API rate limit exceeded. Try again in 60 seconds or enter kubectl command manually.\nOriginal error: {error}"
         );
     }
-    
+
     if error_string.contains("500") || error_string.contains("503") {
         return anyhow::anyhow!(
             "OpenAI service unavailable. Enter kubectl command manually.\nOriginal error: {error}"
         );
     }
-    
+
     if error_string.contains("timeout") {
         return anyhow::anyhow!(
             "OpenAI request timed out. Enter kubectl command manually.\nOriginal error: {error}"
         );
     }
-    
+
     // Generic error with fallback suggestion
     anyhow::anyhow!(
         "OpenAI translation failed. Enter kubectl command manually.\nOriginal error: {error}"
@@ -306,9 +310,9 @@ mod tests {
             Some("my-namespace".to_string()),
             "admin".to_string(),
         );
-        
+
         let prompt = build_system_prompt(&context);
-        
+
         assert!(prompt.contains("Cluster: production"));
         assert!(prompt.contains("Namespace: my-namespace"));
         assert!(prompt.contains("Environment: production"));
@@ -323,9 +327,9 @@ mod tests {
             None,
             "user".to_string(),
         );
-        
+
         let prompt = build_user_prompt("show pods", &context);
-        
+
         assert!(prompt.contains("show pods"));
         assert!(prompt.contains("Current cluster: development"));
         assert!(prompt.contains("Current namespace: default"));
@@ -341,7 +345,7 @@ mod tests {
                 },
             }],
         };
-        
+
         let result = parse_translation_response(&response).unwrap();
         assert_eq!(result.kubectl_command, "kubectl get pods -n default");
         assert_eq!(result.confidence_score, 95);
@@ -358,23 +362,24 @@ mod tests {
                 },
             }],
         };
-        
+
         let result = parse_translation_response(&response);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("does not start with 'kubectl '"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("does not start with 'kubectl '"));
     }
 
     #[test]
     fn test_is_retryable_error() {
         let timeout_err = anyhow::anyhow!("Request timeout");
         assert!(is_retryable_error(&timeout_err));
-        
+
         let network_err = anyhow::anyhow!("Network connection failed");
         assert!(is_retryable_error(&network_err));
-        
+
         let api_err = anyhow::anyhow!("401 Unauthorized");
         assert!(!is_retryable_error(&api_err));
     }
 }
-
-

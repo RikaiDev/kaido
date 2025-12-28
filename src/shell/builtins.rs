@@ -232,10 +232,7 @@ pub enum BuiltinResult {
 }
 
 /// Execute a builtin command
-pub fn execute_builtin(
-    builtin: &Builtin,
-    env: &mut ShellEnvironment,
-) -> BuiltinResult {
+pub fn execute_builtin(builtin: &Builtin, env: &mut ShellEnvironment) -> BuiltinResult {
     match builtin {
         Builtin::Cd(path) => execute_cd(path, env),
         Builtin::Export(name, value) => {
@@ -243,10 +240,7 @@ pub fn execute_builtin(
             BuiltinResult::Ok(None)
         }
         Builtin::ExportList => {
-            let vars: Vec<String> = env
-                .list_vars()
-                .map(|(k, v)| format!("{}={}", k, v))
-                .collect();
+            let vars: Vec<String> = env.list_vars().map(|(k, v)| format!("{k}={v}")).collect();
             if vars.is_empty() {
                 BuiltinResult::Ok(None)
             } else {
@@ -264,7 +258,7 @@ pub fn execute_builtin(
         Builtin::AliasList => {
             let aliases: Vec<String> = env
                 .list_aliases()
-                .map(|(k, v)| format!("alias {}='{}'", k, v))
+                .map(|(k, v)| format!("alias {k}='{v}'"))
                 .collect();
             if aliases.is_empty() {
                 BuiltinResult::Ok(None)
@@ -276,7 +270,7 @@ pub fn execute_builtin(
             if env.unset_alias(name) {
                 BuiltinResult::Ok(None)
             } else {
-                BuiltinResult::Error(format!("unalias: {}: not found", name))
+                BuiltinResult::Error(format!("unalias: {name}: not found"))
             }
         }
         Builtin::Source(path) => execute_source(path),
@@ -331,12 +325,12 @@ fn execute_cd(path: &str, env: &mut ShellEnvironment) -> BuiltinResult {
 
     match std::env::set_current_dir(&expanded) {
         Ok(()) => BuiltinResult::Ok(None),
-        Err(e) => BuiltinResult::Error(format!("cd: {}: {}", path, e)),
+        Err(e) => BuiltinResult::Error(format!("cd: {path}: {e}")),
     }
 }
 
 /// Execute source command
-fn execute_source(path: &PathBuf) -> BuiltinResult {
+fn execute_source(path: &std::path::Path) -> BuiltinResult {
     // Expand ~ if present
     let expanded = if path.starts_with("~") {
         if let Some(home) = dirs::home_dir() {
@@ -347,10 +341,10 @@ fn execute_source(path: &PathBuf) -> BuiltinResult {
                 home.join(&path_str[2..])
             }
         } else {
-            path.clone()
+            path.to_path_buf()
         }
     } else {
-        path.clone()
+        path.to_path_buf()
     };
 
     match std::fs::read_to_string(&expanded) {
@@ -392,7 +386,7 @@ mod tests {
         env.set_var("TEST_VAR", "test_value");
         env.unset_var("TEST_VAR");
         // Note: get_var checks system env too, so we check our internal storage
-        assert!(env.variables.get("TEST_VAR").is_none());
+        assert!(!env.variables.contains_key("TEST_VAR"));
     }
 
     #[test]
@@ -531,7 +525,10 @@ mod tests {
     #[test]
     fn test_execute_export() {
         let mut env = ShellEnvironment::new();
-        let result = execute_builtin(&Builtin::Export("TEST".to_string(), "value".to_string()), &mut env);
+        let result = execute_builtin(
+            &Builtin::Export("TEST".to_string(), "value".to_string()),
+            &mut env,
+        );
         assert!(matches!(result, BuiltinResult::Ok(None)));
         assert_eq!(env.get_var("TEST"), Some("value".to_string()));
     }
@@ -539,7 +536,10 @@ mod tests {
     #[test]
     fn test_execute_alias() {
         let mut env = ShellEnvironment::new();
-        let result = execute_builtin(&Builtin::Alias("k".to_string(), "kubectl".to_string()), &mut env);
+        let result = execute_builtin(
+            &Builtin::Alias("k".to_string(), "kubectl".to_string()),
+            &mut env,
+        );
         assert!(matches!(result, BuiltinResult::Ok(None)));
         assert_eq!(env.get_alias("k"), Some(&"kubectl".to_string()));
     }

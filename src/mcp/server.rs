@@ -37,7 +37,7 @@ impl McpServer {
             let line = match line {
                 Ok(l) => l,
                 Err(e) => {
-                    eprintln!("[kaido-mcp] Error reading input: {}", e);
+                    eprintln!("[kaido-mcp] Error reading input: {e}");
                     continue;
                 }
             };
@@ -52,8 +52,11 @@ impl McpServer {
 
             if let Some(resp) = response {
                 let json_str = serde_json::to_string(&resp)?;
-                eprintln!("[kaido-mcp] Sending: {}", &json_str[..json_str.len().min(100)]);
-                writeln!(stdout, "{}", json_str)?;
+                eprintln!(
+                    "[kaido-mcp] Sending: {}",
+                    &json_str[..json_str.len().min(100)]
+                );
+                writeln!(stdout, "{json_str}")?;
                 stdout.flush()?;
             }
         }
@@ -116,7 +119,9 @@ impl McpServer {
         let result = InitializeResult {
             protocol_version: "2024-11-05".to_string(),
             capabilities: ServerCapabilities {
-                tools: Some(ToolsCapability { list_changed: false }),
+                tools: Some(ToolsCapability {
+                    list_changed: false,
+                }),
             },
             server_info: ServerInfo {
                 name: "kaido-mcp".to_string(),
@@ -144,14 +149,16 @@ impl McpServer {
         let call_params: ToolCallParams = serde_json::from_value(params.clone())
             .map_err(|e| JsonRpcError::invalid_params(&e.to_string()))?;
 
-        eprintln!("[kaido-mcp] Tool call: {} with args: {:?}",
-            call_params.name,
-            call_params.arguments
+        eprintln!(
+            "[kaido-mcp] Tool call: {} with args: {:?}",
+            call_params.name, call_params.arguments
         );
 
         // Execute tool call in async context
         let result = self.runtime.block_on(async {
-            self.tools.call(&call_params.name, &call_params.arguments).await
+            self.tools
+                .call(&call_params.name, &call_params.arguments)
+                .await
         });
 
         serde_json::to_value(result).map_err(|e| JsonRpcError::internal_error(&e.to_string()))

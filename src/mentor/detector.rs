@@ -32,9 +32,7 @@ impl ErrorDetector {
     pub fn new() -> Self {
         Self {
             patterns: Self::build_patterns(),
-            location_regex: Regex::new(
-                r"(?:^|[:\s])(/[^\s:]+):(\d+)(?::(\d+))?"
-            ).unwrap(),
+            location_regex: Regex::new(r"(?:^|[:\s])(/[^\s:]+):(\d+)(?::(\d+))?").unwrap(),
         }
     }
 
@@ -308,7 +306,8 @@ impl ErrorDetector {
         for pattern in &self.patterns {
             if let Some(captures) = pattern.regex.captures(output) {
                 let key_message = if pattern.key_group > 0 {
-                    captures.get(pattern.key_group)
+                    captures
+                        .get(pattern.key_group)
                         .map(|m| m.as_str().to_string())
                         .unwrap_or_else(|| captures.get(0).unwrap().as_str().to_string())
                 } else {
@@ -329,12 +328,9 @@ impl ErrorDetector {
     fn extract_first_error_line(&self, output: &str) -> String {
         // Look for lines containing common error indicators
         let error_indicators = [
-            "error", "Error", "ERROR",
-            "failed", "Failed", "FAILED",
-            "fatal", "Fatal", "FATAL",
-            "cannot", "Cannot", "CANNOT",
-            "unable", "Unable", "UNABLE",
-            "denied", "Denied", "DENIED",
+            "error", "Error", "ERROR", "failed", "Failed", "FAILED", "fatal", "Fatal", "FATAL",
+            "cannot", "Cannot", "CANNOT", "unable", "Unable", "UNABLE", "denied", "Denied",
+            "DENIED",
         ];
 
         for line in output.lines() {
@@ -352,7 +348,8 @@ impl ErrorDetector {
         }
 
         // Just return the first non-empty line
-        output.lines()
+        output
+            .lines()
             .map(|l| l.trim())
             .find(|l| !l.is_empty())
             .unwrap_or("Unknown error")
@@ -393,8 +390,8 @@ impl ErrorDetector {
                 let start = i.saturating_sub(1);
                 let end = (i + 2).min(lines.len());
 
-                for j in start..end {
-                    let trimmed = lines[j].trim();
+                for line in lines.iter().take(end).skip(start) {
+                    let trimmed = line.trim();
                     if !trimmed.is_empty() && !context.contains(&trimmed.to_string()) {
                         context.push(trimmed.to_string());
                     }
@@ -481,10 +478,7 @@ mod tests {
     #[test]
     fn test_detect_docker_error() {
         let detector = ErrorDetector::new();
-        let result = make_result(
-            "Unable to find image 'nonexistent:latest' locally",
-            1,
-        );
+        let result = make_result("Unable to find image 'nonexistent:latest' locally", 1);
 
         let error = detector.analyze(&result).unwrap();
         assert_eq!(error.error_type, ErrorType::DockerError);
@@ -493,10 +487,7 @@ mod tests {
     #[test]
     fn test_detect_kubernetes_error() {
         let detector = ErrorDetector::new();
-        let result = make_result(
-            "Error from server (NotFound): pods \"my-pod\" not found",
-            1,
-        );
+        let result = make_result("Error from server (NotFound): pods \"my-pod\" not found", 1);
 
         let error = detector.analyze(&result).unwrap();
         assert_eq!(error.error_type, ErrorType::KubernetesError);
@@ -505,7 +496,10 @@ mod tests {
     #[test]
     fn test_detect_port_in_use() {
         let detector = ErrorDetector::new();
-        let result = make_result("Error: listen EADDRINUSE: address already in use :::3000", 1);
+        let result = make_result(
+            "Error: listen EADDRINUSE: address already in use :::3000",
+            1,
+        );
 
         let error = detector.analyze(&result).unwrap();
         assert_eq!(error.error_type, ErrorType::PortInUse);
@@ -514,9 +508,8 @@ mod tests {
     #[test]
     fn test_extract_source_location() {
         let detector = ErrorDetector::new();
-        let location = detector.extract_source_location(
-            "Error in /etc/nginx/nginx.conf:42:10 - unknown directive"
-        );
+        let location = detector
+            .extract_source_location("Error in /etc/nginx/nginx.conf:42:10 - unknown directive");
 
         assert!(location.is_some());
         let loc = location.unwrap();

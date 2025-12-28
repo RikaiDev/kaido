@@ -1,16 +1,16 @@
+pub mod explainer;
 pub mod gemini;
 pub mod ollama;
-pub mod explainer;
 
+pub use explainer::CommandExplainer;
 pub use gemini::GeminiBackend;
 pub use ollama::{ModelRecommendation, OllamaBackend, OllamaStatus};
-pub use explainer::CommandExplainer;
 
-use anyhow::Result;
-use async_trait::async_trait;
-use crate::config::{Config, AIProvider};
+use crate::config::{AIProvider, Config};
 use crate::kubectl::{KubectlContext, TranslationResult};
 use crate::tools::{LLMBackend, LLMResponse};
+use anyhow::Result;
+use async_trait::async_trait;
 
 /// AI Manager - Handles inference with multiple backends
 /// Supports: Gemini API (cloud) and Ollama (local)
@@ -31,7 +31,11 @@ impl AIManager {
     }
 
     /// Translate natural language to kubectl command
-    pub async fn translate_kubectl(&self, input: &str, context: &KubectlContext) -> crate::utils::KaidoResult<TranslationResult> {
+    pub async fn translate_kubectl(
+        &self,
+        input: &str,
+        context: &KubectlContext,
+    ) -> crate::utils::KaidoResult<TranslationResult> {
         log::info!("Attempting kubectl translation");
 
         // Build kubectl-specific prompt
@@ -52,7 +56,9 @@ impl AIManager {
         );
 
         // Use configured provider
-        let response_text = self.infer(&prompt).await
+        let response_text = self
+            .infer(&prompt)
+            .await
             .map_err(|e| crate::utils::KaidoError::ModelError {
                 message: e.to_string(),
                 model_name: "ai".to_string(),
@@ -106,7 +112,7 @@ impl AIManager {
                         Ok(response)
                     }
                     Err(gemini_err) => {
-                        log::warn!("Gemini failed: {}, trying Ollama", gemini_err);
+                        log::warn!("Gemini failed: {gemini_err}, trying Ollama");
 
                         match self.ollama.infer(prompt).await {
                             Ok(response) => {
@@ -117,13 +123,11 @@ impl AIManager {
                                 log::error!("All AI backends failed");
                                 Err(anyhow::anyhow!(
                                     "All AI backends failed:\n\
-                                    - Gemini: {}\n\
-                                    - Ollama: {}\n\n\
+                                    - Gemini: {gemini_err}\n\
+                                    - Ollama: {ollama_err}\n\n\
                                     Please ensure either:\n\
                                     1. GEMINI_API_KEY is set, or\n\
-                                    2. Ollama is running (ollama serve)",
-                                    gemini_err,
-                                    ollama_err
+                                    2. Ollama is running (ollama serve)"
                                 ))
                             }
                         }

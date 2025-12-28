@@ -113,23 +113,23 @@ ORDER BY timestamp DESC;
 pub fn initialize_schema(conn: &rusqlite::Connection) -> anyhow::Result<()> {
     // Create audit_log table
     conn.execute(AUDIT_LOG_SCHEMA, [])?;
-    
+
     // Create indexes
     conn.execute_batch(AUDIT_LOG_INDEXES)?;
-    
+
     // Create views
     conn.execute_batch(AUDIT_LOG_VIEWS)?;
-    
+
     // Set PRAGMA settings for better performance (use execute_batch for PRAGMA)
     conn.execute_batch(
         "PRAGMA journal_mode=WAL;
          PRAGMA synchronous=NORMAL;
          PRAGMA foreign_keys=ON;
-         PRAGMA temp_store=MEMORY;"
+         PRAGMA temp_store=MEMORY;",
     )?;
-    
+
     log::info!("Audit log schema initialized");
-    
+
     Ok(())
 }
 
@@ -141,7 +141,7 @@ mod tests {
     fn test_schema_initialization() {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
         initialize_schema(&conn).unwrap();
-        
+
         // Verify table exists
         let table_count: i64 = conn
             .query_row(
@@ -151,7 +151,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(table_count, 1);
-        
+
         // Verify indexes exist
         let index_count: i64 = conn
             .query_row(
@@ -162,7 +162,5 @@ mod tests {
             .unwrap();
         assert_eq!(index_count, 4);
     }
-
 }
 // Note: clean_old_entries test removed - function needs to be implemented
-

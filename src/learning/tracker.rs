@@ -99,12 +99,9 @@ impl LearningTracker {
     /// Start a new learning session
     pub fn start_session(&mut self) -> Result<i64> {
         let now = current_timestamp();
-        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{}", e))?;
+        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
 
-        conn.execute(
-            "INSERT INTO sessions (start_time) VALUES (?)",
-            params![now],
-        )?;
+        conn.execute("INSERT INTO sessions (start_time) VALUES (?)", params![now])?;
 
         let session_id = conn.last_insert_rowid();
         self.session_id = Some(session_id);
@@ -115,7 +112,7 @@ impl LearningTracker {
     pub fn end_session(&mut self) -> Result<()> {
         if let Some(session_id) = self.session_id.take() {
             let now = current_timestamp();
-            let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{}", e))?;
+            let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
 
             conn.execute(
                 "UPDATE sessions SET end_time = ? WHERE id = ?",
@@ -135,7 +132,7 @@ impl LearningTracker {
         full_output: Option<&str>,
     ) -> Result<i64> {
         let now = current_timestamp();
-        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{}", e))?;
+        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
 
         conn.execute(
             "INSERT INTO error_encounters (timestamp, error_type, key_message, command, exit_code, full_output)
@@ -169,7 +166,7 @@ impl LearningTracker {
 
     /// Mark an error as resolved
     pub fn mark_resolved(&self, error_id: i64, resolution_time: Duration) -> Result<()> {
-        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{}", e))?;
+        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
 
         conn.execute(
             "UPDATE error_encounters SET resolved = 1, resolution_time_ms = ? WHERE id = ?",
@@ -214,7 +211,7 @@ impl LearningTracker {
 
     /// Get the most recent error encounter
     pub fn get_last_error(&self) -> Result<Option<ErrorEncounter>> {
-        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{}", e))?;
+        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
 
         let result = conn
             .query_row(
@@ -242,14 +239,13 @@ impl LearningTracker {
 
     /// Get learning progress summary
     pub fn get_progress(&self) -> Result<LearningProgress> {
-        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{}", e))?;
+        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
 
         // Total errors
-        let total_errors: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM error_encounters",
-            [],
-            |row| row.get(0),
-        )?;
+        let total_errors: i64 =
+            conn.query_row("SELECT COUNT(*) FROM error_encounters", [], |row| {
+                row.get(0)
+            })?;
 
         // Resolved errors
         let resolved_errors: i64 = conn.query_row(
@@ -296,9 +292,8 @@ impl LearningTracker {
 
         // Concepts
         let mut concepts = Vec::new();
-        let mut stmt = conn.prepare(
-            "SELECT concept FROM concepts_learned ORDER BY encounter_count DESC",
-        )?;
+        let mut stmt =
+            conn.prepare("SELECT concept FROM concepts_learned ORDER BY encounter_count DESC")?;
         let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
 
         for row in rows {
@@ -317,7 +312,7 @@ impl LearningTracker {
 
     /// Get error summary by type
     pub fn get_error_summaries(&self, limit: usize) -> Result<Vec<ErrorSummary>> {
-        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{}", e))?;
+        let conn = self.conn.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
 
         let mut stmt = conn.prepare(
             "SELECT error_type,
@@ -430,13 +425,31 @@ mod tests {
 
         // Record some errors
         tracker
-            .record_error(&ErrorType::CommandNotFound, "not found 1", "cmd1", Some(127), None)
+            .record_error(
+                &ErrorType::CommandNotFound,
+                "not found 1",
+                "cmd1",
+                Some(127),
+                None,
+            )
             .unwrap();
         tracker
-            .record_error(&ErrorType::CommandNotFound, "not found 2", "cmd2", Some(127), None)
+            .record_error(
+                &ErrorType::CommandNotFound,
+                "not found 2",
+                "cmd2",
+                Some(127),
+                None,
+            )
             .unwrap();
         let id = tracker
-            .record_error(&ErrorType::PermissionDenied, "permission denied", "cmd3", Some(1), None)
+            .record_error(
+                &ErrorType::PermissionDenied,
+                "permission denied",
+                "cmd3",
+                Some(1),
+                None,
+            )
             .unwrap();
 
         // Resolve one
@@ -468,7 +481,10 @@ mod tests {
     #[test]
     fn test_is_similar_command() {
         assert!(LearningTracker::is_similar_command("ls -la", "ls /tmp"));
-        assert!(LearningTracker::is_similar_command("kubectl get pods", "kubectl get services"));
+        assert!(LearningTracker::is_similar_command(
+            "kubectl get pods",
+            "kubectl get services"
+        ));
         assert!(!LearningTracker::is_similar_command("ls", "cat"));
     }
 
@@ -479,7 +495,13 @@ mod tests {
         // Record multiple errors
         for _ in 0..3 {
             tracker
-                .record_error(&ErrorType::CommandNotFound, "not found", "cmd", Some(127), None)
+                .record_error(
+                    &ErrorType::CommandNotFound,
+                    "not found",
+                    "cmd",
+                    Some(127),
+                    None,
+                )
                 .unwrap();
         }
         for _ in 0..2 {

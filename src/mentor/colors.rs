@@ -30,64 +30,112 @@ impl MentorColors {
 
     /// Dim cyan for box borders
     pub fn border(&self) -> &'static str {
-        if self.enabled { "\x1b[36m" } else { "" }
+        if self.enabled {
+            "\x1b[36m"
+        } else {
+            ""
+        }
     }
 
     /// Bold cyan for title
     pub fn title(&self) -> &'static str {
-        if self.enabled { "\x1b[1;36m" } else { "" }
+        if self.enabled {
+            "\x1b[1;36m"
+        } else {
+            ""
+        }
     }
 
     // Content colors
 
     /// Bold yellow for key message (the main error)
     pub fn key_message(&self) -> &'static str {
-        if self.enabled { "\x1b[1;33m" } else { "" }
+        if self.enabled {
+            "\x1b[1;33m"
+        } else {
+            ""
+        }
     }
 
     /// White for explanation text
     pub fn explanation(&self) -> &'static str {
-        if self.enabled { "\x1b[0m" } else { "" }
+        if self.enabled {
+            "\x1b[0m"
+        } else {
+            ""
+        }
     }
 
     /// Dim blue for source location
     pub fn location(&self) -> &'static str {
-        if self.enabled { "\x1b[34m" } else { "" }
+        if self.enabled {
+            "\x1b[34m"
+        } else {
+            ""
+        }
     }
 
     /// Green for search suggestions
     pub fn search(&self) -> &'static str {
-        if self.enabled { "\x1b[32m" } else { "" }
+        if self.enabled {
+            "\x1b[32m"
+        } else {
+            ""
+        }
     }
 
     /// Bold white for commands
     pub fn command(&self) -> &'static str {
-        if self.enabled { "\x1b[1;37m" } else { "" }
+        if self.enabled {
+            "\x1b[1;37m"
+        } else {
+            ""
+        }
     }
 
     /// Magenta for concepts/learning topics
     pub fn concept(&self) -> &'static str {
-        if self.enabled { "\x1b[35m" } else { "" }
+        if self.enabled {
+            "\x1b[35m"
+        } else {
+            ""
+        }
     }
 
     /// Dim for secondary/muted text
     pub fn dim(&self) -> &'static str {
-        if self.enabled { "\x1b[2m" } else { "" }
+        if self.enabled {
+            "\x1b[2m"
+        } else {
+            ""
+        }
     }
 
     /// Red for error type label
     pub fn error_type(&self) -> &'static str {
-        if self.enabled { "\x1b[1;31m" } else { "" }
+        if self.enabled {
+            "\x1b[1;31m"
+        } else {
+            ""
+        }
     }
 
     /// Reset all formatting
     pub fn reset(&self) -> &'static str {
-        if self.enabled { "\x1b[0m" } else { "" }
+        if self.enabled {
+            "\x1b[0m"
+        } else {
+            ""
+        }
     }
 
     /// Underline for emphasis
     pub fn underline(&self) -> &'static str {
-        if self.enabled { "\x1b[4m" } else { "" }
+        if self.enabled {
+            "\x1b[4m"
+        } else {
+            ""
+        }
     }
 }
 
