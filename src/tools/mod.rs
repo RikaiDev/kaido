@@ -387,6 +387,6 @@ mod tests {
     fn test_tool_context_default() {
         let ctx = ToolContext::default();
         assert!(!ctx.user.is_empty());
-        assert!(ctx.working_directory.exists() || ctx.working_directory == PathBuf::from("/"));
+        assert!(ctx.working_directory.exists() || ctx.working_directory.as_os_str() == "/");
     }
 }
