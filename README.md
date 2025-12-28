@@ -63,6 +63,18 @@ cargo install --git https://github.com/RikaiDev/kaido
 kaido init
 ```
 
+### Upgrading
+
+**Self-update (v0.1.2+)**
+```bash
+kaido update
+```
+
+**From older versions or manual upgrade**
+```bash
+curl -fsSL https://raw.githubusercontent.com/RikaiDev/kaido/main/install.sh | bash
+```
+
 ### Your First Session
 
 ```bash
@@ -226,6 +238,7 @@ See our [GitHub Issues](https://github.com/RikaiDev/kaido/issues) for planned fe
 - [x] Learning tracker with session summaries
 - [x] Adaptive mentoring based on skill level
 - [x] AI-native shell with LLM-powered explanations
+- [x] Self-update command (`kaido update`)
 
 ## License
 
