@@ -48,28 +48,9 @@ Kaido: Let me help you understand what's happening...
 
 ### Installation
 
-**macOS (Apple Silicon)**
+**One-liner (macOS & Linux)**
 ```bash
-curl -L https://github.com/RikaiDev/kaido/releases/latest/download/kaido-macos-arm64.tar.gz | tar xz
-sudo mv kaido kaido-mcp /usr/local/bin/
-```
-
-**macOS (Intel)**
-```bash
-curl -L https://github.com/RikaiDev/kaido/releases/latest/download/kaido-macos-x64.tar.gz | tar xz
-sudo mv kaido kaido-mcp /usr/local/bin/
-```
-
-**Linux (x64)**
-```bash
-curl -L https://github.com/RikaiDev/kaido/releases/latest/download/kaido-linux-x64.tar.gz | tar xz
-sudo mv kaido kaido-mcp /usr/local/bin/
-```
-
-**Linux (ARM64)**
-```bash
-curl -L https://github.com/RikaiDev/kaido/releases/latest/download/kaido-linux-arm64.tar.gz | tar xz
-sudo mv kaido kaido-mcp /usr/local/bin/
+curl -fsSL https://raw.githubusercontent.com/RikaiDev/kaido/main/install.sh | bash
 ```
 
 **From Source**
