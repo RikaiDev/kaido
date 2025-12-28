@@ -48,12 +48,37 @@ Kaido: Let me help you understand what's happening...
 
 ### Installation
 
+**macOS (Apple Silicon)**
 ```bash
-# Build from source
-cargo build --release
-sudo cp target/release/kaido /usr/local/bin/
+curl -L https://github.com/RikaiDev/kaido/releases/latest/download/kaido-macos-arm64.tar.gz | tar xz
+sudo mv kaido kaido-mcp /usr/local/bin/
+```
 
-# Initialize
+**macOS (Intel)**
+```bash
+curl -L https://github.com/RikaiDev/kaido/releases/latest/download/kaido-macos-x64.tar.gz | tar xz
+sudo mv kaido kaido-mcp /usr/local/bin/
+```
+
+**Linux (x64)**
+```bash
+curl -L https://github.com/RikaiDev/kaido/releases/latest/download/kaido-linux-x64.tar.gz | tar xz
+sudo mv kaido kaido-mcp /usr/local/bin/
+```
+
+**Linux (ARM64)**
+```bash
+curl -L https://github.com/RikaiDev/kaido/releases/latest/download/kaido-linux-arm64.tar.gz | tar xz
+sudo mv kaido kaido-mcp /usr/local/bin/
+```
+
+**From Source**
+```bash
+cargo install --git https://github.com/RikaiDev/kaido
+```
+
+**Initialize**
+```bash
 kaido init
 ```
 
@@ -157,17 +182,28 @@ ollama pull llama3.2       # download a model
 
 Config file: `~/.kaido/config.toml`
 
-## Learning Path (Coming Soon)
+## MCP Server
 
-```
-Stage 1: Terminal Basics     → pwd, ls, cd, cat
-Stage 2: Process Management  → ps, kill, systemctl
-Stage 3: Docker Fundamentals → containers, images, compose
-Stage 4: Kubernetes          → pods, deployments, services
-Stage 5: Production Ops      → monitoring, debugging, scaling
+Kaido exposes 6 tools via [Model Context Protocol](https://modelcontextprotocol.io/) for Claude Code integration:
+
+```json
+{
+  "mcpServers": {
+    "kaido": {
+      "command": "kaido-mcp",
+      "args": []
+    }
+  }
+}
 ```
 
-Track your progress with `kaido learn`.
+**Available Tools:**
+- `kaido_diagnose` - Diagnose ops issues with AI reasoning
+- `kaido_execute` - Execute commands with risk assessment
+- `kaido_explain` - Get educational explanations for commands
+- `kaido_get_context` - Get system environment info
+- `kaido_list_tools` - List supported ops tools
+- `kaido_check_risk` - Check command risk level
 
 ## Part of RikaiDev
 
@@ -203,11 +239,12 @@ See our [GitHub Issues](https://github.com/RikaiDev/kaido/issues) for planned fe
 - [x] ReAct reasoning loop
 - [x] Multi-tool support
 - [x] Risk classification
-- [x] Explain mode ([#5](https://github.com/RikaiDev/kaido/issues/5))
-- [x] Ollama local LLM ([#11](https://github.com/RikaiDev/kaido/issues/11))
-- [ ] Terminal 101 tutorial ([#6](https://github.com/RikaiDev/kaido/issues/6))
-- [ ] MCP server integration ([#7](https://github.com/RikaiDev/kaido/issues/7))
-- [ ] Learning path system ([#9](https://github.com/RikaiDev/kaido/issues/9))
+- [x] Explain mode
+- [x] Ollama local LLM
+- [x] MCP server integration (6 tools for Claude Code)
+- [x] Learning tracker with session summaries
+- [x] Adaptive mentoring based on skill level
+- [x] AI-native shell with LLM-powered explanations
 
 ## License
 
