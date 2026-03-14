@@ -3,7 +3,7 @@ use crate::shell::executor::CommandExecutor;
 use crate::shell::learning::LearningTracker;
 use crate::shell::parser::CommandParser;
 use crate::shell::skills::SkillsRegistry;
-use crate::shell::plugin::PluginManager;
+use crate::shell::plugin::{PluginManager, ShellEvent};
 use crate::shell::theme::Theme;
 use crate::shell::palette::CommandPalette;
 use anyhow::Result;
@@ -28,6 +28,8 @@ pub struct Shell {
 
 impl Shell {
     pub fn new() -> Result<Self> {
+        let plugins = PluginManager::load_from_config()?;
+        
         Ok(Self {
             running: true,
             learning: LearningTracker::new(),
@@ -35,7 +37,7 @@ impl Shell {
             executor: CommandExecutor::new(),
             ai: AIProcessor::new(),
             skills: SkillsRegistry::load(),
-            plugins: PluginManager::new(),
+            plugins,
             theme: Theme::load(),
             palette: CommandPalette::default(),
         })
@@ -163,7 +165,7 @@ impl Shell {
                 break;
             }
             
-            let mut input = input.trim().to_string();
+            let input = input.trim().to_string();
             if input.is_empty() {
                 continue;
             }
@@ -174,17 +176,19 @@ impl Shell {
                 continue;
             }
             
-            // Check plugin hooks
-            if let Some(hook_result) = self.plugins.on_command(&input) {
-                match hook_result {
-                    crate::shell::plugin::HookResult::Suggestion(s) => {
-                        println!("{YELLOW}💡 Suggestion: {}{RESET}", s);
+            // Check plugin events - emit CommandExecuted event
+            let diagnostics = self.plugins.collect_diagnostics(&ShellEvent::CommandExecuted {
+                cmd: input.clone(),
+                exit_code: 0,
+                output: "".to_string(),
+            });
+            if !diagnostics.is_empty() {
+                for ctx in &diagnostics {
+                    println!("{YELLOW}🔧 Diagnostics:{RESET} {}", ctx.category);
+                    for cmd in &ctx.commands {
+                        println!("  → {}", cmd.purpose);
+                        println!("    {}", cmd.cmd);
                     }
-                    crate::shell::plugin::HookResult::Modified(cmd) => {
-                        println!("{YELLOW}→ Modified: {}{RESET}", cmd);
-                        input = cmd;
-                    }
-                    crate::shell::plugin::HookResult::None => {}
                 }
             }
             
@@ -204,10 +208,29 @@ impl Shell {
                         Ok(output) => {
                             print!("{}", String::from_utf8_lossy(&output.stdout));
                             if !output.stderr.is_empty() {
-                                eprint!("{}", String::from_utf8_lossy(&output.stderr));
-                                
                                 let error_msg = String::from_utf8_lossy(&output.stderr);
-                                if let Some(skill) = self.skills.match_error(&error_msg) {
+                                eprint!("{}", error_msg);
+                                
+                                // Emit error event and get diagnostics
+                                let diagnostics = self.plugins.collect_diagnostics(&ShellEvent::ErrorOccurred {
+                                    cmd: input.clone(),
+                                    error: error_msg.to_string(),
+                                    exit_code: output.status.code(),
+                                });
+                                
+                                if !diagnostics.is_empty() {
+                                    for ctx in &diagnostics {
+                                        println!("\n{YELLOW}🔧 {} Diagnostics:{RESET}", ctx.category);
+                                        println!("   {}", ctx.explanation);
+                                        if let Some(learn) = &ctx.learn {
+                                            println!("   {YELLOW}💡 {learn}{RESET}");
+                                        }
+                                        for cmd in &ctx.commands {
+                                            println!("   → {}", cmd.purpose);
+                                            println!("     {YELLOW}${}{RESET}", cmd.cmd);
+                                        }
+                                    }
+                                } else if let Some(skill) = self.skills.match_error(&error_msg) {
                                     println!("\n💡 Learn: {}", skill.teaches.join(", "));
                                 } else {
                                     let explanation = self.ai.explain_error(&error_msg);
@@ -215,10 +238,39 @@ impl Shell {
                                 }
                             }
                             
+                            // Emit success event for learning
+                            let _ = self.plugins.emit(&ShellEvent::CommandExecuted {
+                                cmd: input.clone(),
+                                exit_code: output.status.code().unwrap_or(0),
+                                output: String::from_utf8_lossy(&output.stdout).to_string(),
+                            });
+                            
                             self.learning.record_command(&input);
                         }
                         Err(e) => {
-                            eprintln!("Error: {}", e);
+                            let error_msg = e.to_string();
+                            eprintln!("Error: {}", error_msg);
+                            
+                            // Emit error event
+                            let diagnostics = self.plugins.collect_diagnostics(&ShellEvent::ErrorOccurred {
+                                cmd: input.clone(),
+                                error: error_msg.clone(),
+                                exit_code: None,
+                            });
+                            
+                            if !diagnostics.is_empty() {
+                                for ctx in &diagnostics {
+                                    println!("\n{YELLOW}🔧 {} Diagnostics:{RESET}", ctx.category);
+                                    println!("   {}", ctx.explanation);
+                                    if let Some(learn) = &ctx.learn {
+                                        println!("   {YELLOW}💡 {learn}{RESET}");
+                                    }
+                                    for cmd in &ctx.commands {
+                                        println!("   → {}", cmd.purpose);
+                                        println!("     {YELLOW}${}{RESET}", cmd.cmd);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
