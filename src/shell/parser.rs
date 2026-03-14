@@ -5,7 +5,6 @@ use std::fmt;
 pub struct ParsedCommand {
     pub command: String,
     pub args: Vec<String>,
-    pub pipes_to: Option<Box<ParsedCommand>>,
     pub commands: Vec<ParsedCommand>,
 }
 
@@ -39,6 +38,18 @@ impl CommandParser {
 
         let parts: Vec<&str> = input.split('|').collect();
 
+        for (i, part) in parts.iter().enumerate() {
+            if part.trim().is_empty() {
+                return Err(ParseError {
+                    message: if i == 0 {
+                        "Pipe cannot start with '|'".to_string()
+                    } else {
+                        "Pipe cannot end with '|'".to_string()
+                    },
+                });
+            }
+        }
+
         if parts.len() == 1 {
             self.parse_single_command(parts[0].trim())
         } else {
@@ -51,8 +62,7 @@ impl CommandParser {
             let first = &commands[0];
             let result = ParsedCommand {
                 command: first.command.clone(),
-                args: first.args.clone(),
-                pipes_to: None,
+                args: vec![],
                 commands,
             };
 
@@ -75,7 +85,6 @@ impl CommandParser {
         Ok(ParsedCommand {
             command,
             args,
-            pipes_to: None,
             commands: vec![],
         })
     }
