@@ -81,8 +81,11 @@ impl LLMBackend for CopilotBackend {
             ));
         }
         
+        // Copilot API uses "github/" prefix for models
+        let model = format!("github/{}", self.config.model);
+        
         let request = CopilotRequest {
-            model: self.config.model.clone(),
+            model,
             messages: vec![
                 Message {
                     role: "system".to_string(),
