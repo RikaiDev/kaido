@@ -17,13 +17,9 @@ const BOLD: &str = "\x1b[1m";
 /// Print welcome message for first-time users
 fn print_welcome_first_run() {
     println!();
-    println!("{CYAN}╭───────────────────────────────────────────────────────────╮{RESET}");
-    println!("{CYAN}│{RESET}                                                           {CYAN}│{RESET}");
-    println!("{CYAN}│{RESET}   {BOLD}Welcome to Kaido!{RESET} - AI Shell                 {CYAN}│{RESET}");
-    println!("{CYAN}│{RESET}                                                           {CYAN}│{RESET}");
-    println!("{CYAN}│{RESET}   Run {CYAN}kaido onboard{RESET} to set up AI              {CYAN}│{RESET}");
-    println!("{CYAN}│{RESET}                                                           {CYAN}│{RESET}");
-    println!("{CYAN}╰───────────────────────────────────────────────────────────╯{RESET}\n");
+    println!("{CYAN}Welcome to Kaido!{RESET} - AI Shell");
+    println!();
+    println!("Run {CYAN}kaido onboard{RESET} to set up AI\n");
 }
 
 #[derive(Parser)]

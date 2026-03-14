@@ -7,6 +7,12 @@ use crate::shell::plugin::PluginManager;
 use anyhow::Result;
 use std::io::{self, Write};
 
+const CYAN: &str = "\x1b[38;5;87m";
+const GREEN: &str = "\x1b[38;5;154m";
+const YELLOW: &str = "\x1b[38;5;227m";
+const DIM: &str = "\x1b[38;5;245m";
+const RESET: &str = "\x1b[0m";
+
 pub struct Shell {
     pub running: bool,
     pub learning: LearningTracker,
@@ -31,8 +37,26 @@ impl Shell {
     }
 
     pub async fn run(&mut self) -> Result<()> {
+        // ASCII banner on start
+        println!("{CYAN}");
+        println!("  _  __     _     _       ");
+        println!(" | |/ /__ _(_) __| | ___  ");
+        println!(" | ' // _` | |/ _` |/ _ \\ ");
+        println!(" | . \\ (_| | | (_| | (_) |");
+        println!(" |_|\\_\\__,_|_|\\__,_|\\___/ ");
+        println!("{RESET}");
+        println!("{YELLOW}AI Shell{RESET} - Your intelligent ops companion");
+        println!();
+        
         while self.running {
-            print!("❯ ");
+            // Get current directory for prompt
+            let cwd = std::env::current_dir()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|_| "~".to_string());
+            
+            // Build prompt: ~/project ❯ 
+            let prompt = format!("{CYAN}{cwd}{RESET} {GREEN}❯{RESET} ");
+            print!("{}", prompt);
             io::stdout().flush()?;
 
             let mut input = String::new();
