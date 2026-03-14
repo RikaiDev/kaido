@@ -4,7 +4,7 @@ use kaido::config::{AIProvider, Config};
 use kaido::shell::repl::KaidoREPL;
 use kaido::shell::KaidoShell;
 use kaido::tools::LLMBackend;
-use serde::{Deserialize, Serialize};
+use kaido::Target;
 use std::io::{self, Write};
 
 // ANSI color codes
@@ -14,37 +14,6 @@ const YELLOW: &str = "\x1b[38;5;221m";
 const DIM: &str = "\x1b[38;5;245m";
 const RESET: &str = "\x1b[0m";
 const BOLD: &str = "\x1b[1m";
-
-/// Target host for operation
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub enum Target {
-    #[default]
-    Local,
-    Remote {
-        host: String,
-        user: Option<String>,
-    },
-}
-
-impl Target {
-    /// Parse target from string (user@host format)
-    pub fn parse(s: &str) -> Self {
-        if s.is_empty() {
-            return Target::Local;
-        }
-        if let Some((user, host)) = s.split_once('@') {
-            Target::Remote {
-                user: Some(user.to_string()),
-                host: host.to_string(),
-            }
-        } else {
-            Target::Remote {
-                user: None,
-                host: s.to_string(),
-            }
-        }
-    }
-}
 
 #[derive(Parser)]
 #[command(name = "kaido")]

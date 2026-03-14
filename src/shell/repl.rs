@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use crate::agent::{AgentLoop, AgentStep, StepType};
 use crate::ai::AIManager;
 use crate::audit::AgentAuditLogger;
-use crate::bin::kaido::Target;
 use crate::config::Config;
+use crate::target::Target;
 use crate::tools::ToolContext;
 
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
