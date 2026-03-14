@@ -25,6 +25,6 @@ pub use error::PatternMatcher;
 pub use learning::{LearningProgress, LearningTracker};
 pub use mcp::{KaidoTools, McpServer};
 pub use mentor::{ErrorDetector, ErrorInfo, ErrorType, MentorDisplay, Verbosity};
-pub use shell::{KaidoShell, PromptBuilder, PtyExecutionResult, PtyExecutor, ShellConfig};
+pub use shell::{CommandParser, KaidoShell, ParseError, ParsedCommand, PromptBuilder, PtyExecutionResult, PtyExecutor, ShellConfig};
 pub use target::{Target};
 pub use tools::{RiskLevel, Tool, ToolRegistry};

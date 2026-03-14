@@ -14,7 +14,7 @@ pub use core::Shell;
 pub use executor::CommandExecutor;
 pub use history::{default_history_path, ensure_history_dir, HistoryConfig};
 pub use kaido_shell::{KaidoShell, ShellConfig};
-pub use parser::{CommandParser, ParsedCommand};
+pub use parser::{CommandParser, ParseError, ParsedCommand};
 pub use prompt::PromptBuilder;
 pub use pty::{PtyExecutionResult, PtyExecutor};
 pub use repl::run_agent_repl;
