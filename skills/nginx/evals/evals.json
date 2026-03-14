@@ -1,0 +1,35 @@
+{
+  "skill_name": "kaido-nginx",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm getting 502 Bad Gateway error from nginx, how to fix?",
+      "expected_output": "Should follow 502 diagnostic: check error log, test backend, check upstream status",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "nginx shows 403 Forbidden when accessing files",
+      "expected_output": "Should check permissions, index files, SELinux context",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "nginx won't start, config test fails",
+      "expected_output": "Should run nginx -t, check for port conflicts, syntax errors",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "php-fpm not working with nginx, getting blank page",
+      "expected_output": "Should check PHP-FPM status, socket permissions, fastcgi_pass config",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "SSL certificate expired, how to renew?",
+      "expected_output": "Should suggest certbot renew, check renewal dates",
+      "files": []
+    }
+  ]
+}

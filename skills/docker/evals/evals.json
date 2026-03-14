@@ -1,0 +1,35 @@
+{
+  "skill_name": "kaido-docker",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "my docker container keeps restarting over and over, how do i debug this?",
+      "expected_output": "Should follow diagnostic framework: check container status, get logs, inspect state",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "docker run but port 8080 is already taken, what's using it?",
+      "expected_output": "Should show lsof/netstat/ss commands to find process using port",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Cannot connect to Docker daemon error when running docker ps",
+      "expected_output": "Should check if docker daemon is running, suggest systemctl start docker",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "docker compose up fails with YAML error",
+      "expected_output": "Should check docker-compose.yml syntax, common YAML issues",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "my docker images are taking too much disk space",
+      "expected_output": "Should show docker system df, docker system prune commands",
+      "files": []
+    }
+  ]
+}
