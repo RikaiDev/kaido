@@ -1,7 +1,9 @@
+pub mod copilot;
 pub mod explainer;
 pub mod gemini;
 pub mod ollama;
 
+pub use copilot::CopilotBackend;
 pub use explainer::CommandExplainer;
 pub use gemini::GeminiBackend;
 pub use ollama::{ModelRecommendation, OllamaBackend, OllamaStatus};
@@ -13,10 +15,11 @@ use anyhow::Result;
 use async_trait::async_trait;
 
 /// AI Manager - Handles inference with multiple backends
-/// Supports: Gemini API (cloud) and Ollama (local)
+/// Supports: Gemini API, Ollama (local), GitHub Copilot
 pub struct AIManager {
     gemini: GeminiBackend,
     ollama: OllamaBackend,
+    copilot: CopilotBackend,
     provider: AIProvider,
 }
 
@@ -26,6 +29,7 @@ impl AIManager {
         Self {
             gemini: GeminiBackend::new(),
             ollama: OllamaBackend::with_config(config.ollama.clone()),
+            copilot: CopilotBackend::new(),
             provider: config.provider.clone(),
         }
     }
@@ -103,8 +107,18 @@ impl AIManager {
                 log::info!("Using Ollama (configured)");
                 self.ollama.infer(prompt).await
             }
+            AIProvider::Copilot => {
+                log::info!("Using GitHub Copilot (configured)");
+                if self.copilot.is_available() {
+                    self.copilot.infer(prompt).await
+                } else {
+                    Err(anyhow::anyhow!(
+                        "Copilot not available. Set GITHUB_COPILOT_TOKEN environment variable."
+                    ))
+                }
+            }
             AIProvider::Auto => {
-                // Auto: Try Gemini first, then Ollama
+                // Auto: Try Gemini first, then Ollama, then Copilot
                 log::info!("Auto mode: trying Gemini API first");
                 match self.gemini.infer(prompt).await {
                     Ok(response) => {
@@ -120,15 +134,35 @@ impl AIManager {
                                 Ok(response)
                             }
                             Err(ollama_err) => {
-                                log::error!("All AI backends failed");
-                                Err(anyhow::anyhow!(
-                                    "All AI backends failed:\n\
-                                    - Gemini: {gemini_err}\n\
-                                    - Ollama: {ollama_err}\n\n\
-                                    Please ensure either:\n\
-                                    1. GEMINI_API_KEY is set, or\n\
-                                    2. Ollama is running (ollama serve)"
-                                ))
+                                log::warn!("Ollama failed: {ollama_err}, trying Copilot");
+                                
+                                if self.copilot.is_available() {
+                                    match self.copilot.infer(prompt).await {
+                                        Ok(response) => {
+                                            log::info!("[OK] Copilot successful");
+                                            Ok(response)
+                                        }
+                                        Err(copilot_err) => {
+                                            log::error!("All AI backends failed");
+                                            Err(anyhow::anyhow!(
+                                                "All AI backends failed:\n\
+                                                - Gemini: {gemini_err}\n\
+                                                - Ollama: {ollama_err}\n\
+                                                - Copilot: {copilot_err}\n\n\
+                                                Please ensure at least one is configured."
+                                            ))
+                                        }
+                                    }
+                                } else {
+                                    log::error!("All AI backends failed");
+                                    Err(anyhow::anyhow!(
+                                        "All AI backends failed:\n\
+                                        - Gemini: {gemini_err}\n\
+                                        - Ollama: {ollama_err}\n\
+                                        - Copilot: not configured\n\n\
+                                        Please ensure at least one is configured."
+                                    ))
+                                }
                             }
                         }
                     }

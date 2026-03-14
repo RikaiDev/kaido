@@ -10,8 +10,10 @@ pub enum AIProvider {
     Auto,
     /// Use Gemini API only
     Gemini,
-    /// Use Ollama only (local)
+    /// Use Ollama only (local, free)
     Ollama,
+    /// Use GitHub Copilot
+    Copilot,
 }
 
 /// Ollama configuration for local model inference
