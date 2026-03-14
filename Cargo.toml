@@ -6,6 +6,9 @@ description = "AI-powered shell that executes tasks from natural language descri
 authors = ["RikaiDev"]
 license = "MIT"
 
+[lints.rust]
+dead_code = "deny"
+
 [lib]
 name = "kaido"
 path = "src/lib.rs"

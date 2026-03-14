@@ -5,14 +5,13 @@ use crate::shell::parser::CommandParser;
 use crate::shell::skills::SkillsRegistry;
 use crate::shell::plugin::PluginManager;
 use crate::shell::theme::Theme;
+use crate::shell::palette::CommandPalette;
 use anyhow::Result;
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 
 const CYAN: &str = "\x1b[38;5;87m";
 const GREEN: &str = "\x1b[38;5;154m";
 const YELLOW: &str = "\x1b[38;5;227m";
-#[allow(dead_code)]
-const DIM: &str = "\x1b[38;5;245m";
 const RESET: &str = "\x1b[0m";
 
 pub struct Shell {
@@ -22,9 +21,9 @@ pub struct Shell {
     executor: CommandExecutor,
     ai: AIProcessor,
     skills: SkillsRegistry,
-    #[allow(dead_code)]
     plugins: PluginManager,
     theme: Theme,
+    palette: CommandPalette,
 }
 
 impl Shell {
@@ -38,6 +37,7 @@ impl Shell {
             skills: SkillsRegistry::load(),
             plugins: PluginManager::new(),
             theme: Theme::load(),
+            palette: CommandPalette::default(),
         })
     }
     
@@ -86,7 +86,61 @@ impl Shell {
         
         prompt
     }
-
+    
+    pub async fn run_command_palette(&mut self) -> Result<()> {
+        println!();
+        
+        let mut query = String::new();
+        let mut selected = 0;
+        
+        loop {
+            // Clear and show palette
+            print!("\x1b[2J\x1b[H");
+            let items = self.palette.filter(&query);
+            
+            if items.is_empty() {
+                println!("{YELLOW}No matches found{RESET}");
+                break;
+            }
+            
+            self.palette.display(&items, selected);
+            
+            // Read key
+            let mut key = [0u8; 1];
+            if std::io::stdin().read(&mut key).ok() != Some(1) {
+                break;
+            }
+            
+            match key[0] {
+                27 => break, // Escape
+                10 | 13 => { // Enter
+                    if let Some(item) = items.get(selected) {
+                        println!("\n{GREEN}→ {}{RESET}", item.command);
+                        return Ok(());
+                    }
+                }
+                65 => { // Up
+                    if selected > 0 {
+                        selected -= 1;
+                    }
+                }
+                66 => { // Down
+                    if selected < items.len() - 1 {
+                        selected += 1;
+                    }
+                }
+                127 => { // Backspace
+                    query.pop();
+                }
+                _ => {
+                    query.push(key[0] as char);
+                }
+            }
+        }
+        
+        Ok(())
+    }
+    
     pub async fn run(&mut self) -> Result<()> {
         // ASCII banner on start
         println!("{CYAN}");
@@ -109,22 +163,42 @@ impl Shell {
                 break;
             }
             
-            let input = input.trim();
+            let mut input = input.trim().to_string();
             if input.is_empty() {
                 continue;
             }
             
-            if self.handle_builtin(input) {
+            // Check for command palette trigger
+            if input == "/palette" || input == "/cmd" {
+                self.run_command_palette().await?;
                 continue;
             }
             
-            if self.ai.is_natural_language(input) {
+            // Check plugin hooks
+            if let Some(hook_result) = self.plugins.on_command(&input) {
+                match hook_result {
+                    crate::shell::plugin::HookResult::Suggestion(s) => {
+                        println!("{YELLOW}💡 Suggestion: {}{RESET}", s);
+                    }
+                    crate::shell::plugin::HookResult::Modified(cmd) => {
+                        println!("{YELLOW}→ Modified: {}{RESET}", cmd);
+                        input = cmd;
+                    }
+                    crate::shell::plugin::HookResult::None => {}
+                }
+            }
+            
+            if self.handle_builtin(&input) {
+                continue;
+            }
+            
+            if self.ai.is_natural_language(&input) {
                 println!("→ Detected natural language: {}", input);
                 println!("→ (AI translation requires Ollama)");
                 continue;
             }
             
-            match self.parser.parse(input) {
+            match self.parser.parse(&input) {
                 Ok(parsed) => {
                     match self.executor.execute(&parsed.command, &parsed.args.iter().map(|s| s.as_str()).collect::<Vec<_>>()) {
                         Ok(output) => {
@@ -141,7 +215,7 @@ impl Shell {
                                 }
                             }
                             
-                            self.learning.record_command(input);
+                            self.learning.record_command(&input);
                         }
                         Err(e) => {
                             eprintln!("Error: {}", e);

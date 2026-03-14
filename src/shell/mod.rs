@@ -13,6 +13,7 @@ pub mod repl;
 pub mod signals;
 pub mod skills;
 pub mod theme;
+pub mod palette;
 
 pub use builtins::{parse_builtin, Builtin, BuiltinResult, ShellEnvironment};
 pub use core::Shell;
