@@ -15,6 +15,38 @@ const DIM: &str = "\x1b[38;5;245m";
 const RESET: &str = "\x1b[0m";
 const BOLD: &str = "\x1b[1m";
 
+/// Print welcome message for first-time users
+fn print_welcome_first_run() {
+    println!();
+    println!("{CYAN}╭───────────────────────────────────────────────────────────╮{RESET}");
+    println!("{CYAN}│{RESET}                                                           {CYAN}│{RESET}");
+    println!("{CYAN}│{RESET}   {BOLD}Welcome to Kaido!{RESET}                                       {CYAN}│{RESET}");
+    println!("{CYAN}│{RESET}                                                           {CYAN}│{RESET}");
+    println!("{CYAN}│{RESET}   Your AI Ops Coach - Learn DevOps by doing            {CYAN}│{RESET}");
+    println!("{CYAN}│{RESET}                                                           {CYAN}│{RESET}");
+    println!("{CYAN}╰───────────────────────────────────────────────────────────╯{RESET}\n");
+    
+    println!("{GREEN}┌─ GETTING STARTED ────────────────────────────────────────┐{RESET}");
+    println!("{GREEN}│{RESET}                                                           {GREEN}│{RESET}");
+    println!("{GREEN}│{RESET}  1. {BOLD}Setup AI:{RESET}                                               {GREEN}│{RESET}");
+    println!("{GREEN}│{RESET}        {CYAN}kaido onboard{RESET}                                    {GREEN}│{RESET}");
+    println!("{GREEN}│{RESET}                                                           {GREEN}│{RESET}");
+    println!("{GREEN}│{RESET}  2. {BOLD}Configure:{RESET}                                             {GREEN}│{RESET}");
+    println!("{GREEN}│{RESET}        {CYAN}kaido config --show{RESET}                              {GREEN}│{RESET}");
+    println!("{GREEN}│{RESET}                                                           {GREEN}│{RESET}");
+    println!("{GREEN}│{RESET}  3. {BOLD}Start using:{RESET}                                         {GREEN}│{RESET}");
+    println!("{GREEN}│{RESET}        {CYAN}kaido{RESET}                                            {GREEN}│{RESET}");
+    println!("{GREEN}│{RESET}                                                           {GREEN}│{RESET}");
+    println!("{GREEN}│{RESET}  Example questions:                                    {GREEN}│{RESET}");
+    println!("{GREEN}│{RESET}    • \"check nginx status\"                              {GREEN}│{RESET}");
+    println!("{GREEN}│{RESET}    • \"docker container not starting\"                {GREEN}│{RESET}");
+    println!("{GREEN}│{RESET}    • \"show disk usage\"                                {GREEN}│{RESET}");
+    println!("{GREEN}│{RESET}                                                           {GREEN}│{RESET}");
+    println!("{GREEN}└───────────────────────────────────────────────────────────┘{RESET}\n");
+    
+    println!("{DIM}For more info: {CYAN}https://github.com/RikaiDev/kaido{RESET}\n");
+}
+
 #[derive(Parser)]
 #[command(name = "kaido")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
@@ -95,6 +127,20 @@ async fn main() -> anyhow::Result<()> {
             run_config(show, set_api_key, set_model, set_url, provider).await?;
         }
         None => {
+            // Check if first run (no config file exists)
+            let config_path = Config::get_config_path();
+            let is_first_run = match config_path {
+                Ok(path) => !path.exists(),
+                Err(_) => true,
+            };
+            
+            if is_first_run {
+                // First run - show welcome
+                print_welcome_first_run();
+                println!("\n{YELLOW}Run 'kaido onboard' to get started!{RESET}\n");
+                return Ok(());
+            }
+            
             let mut repl = KaidoREPL::new()?;
             repl.set_json_mode(cli.json);
             repl.set_target(Target::parse(&cli.target));
