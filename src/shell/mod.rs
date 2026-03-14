@@ -6,6 +6,7 @@ pub mod history;
 pub mod kaido_shell;
 pub mod learning;
 pub mod parser;
+pub mod plugin;
 pub mod prompt;
 pub mod pty;
 pub mod repl;
