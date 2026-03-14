@@ -60,7 +60,8 @@ impl Default for OpenAIConfig {
 /// GitHub Copilot configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CopilotConfig {
-    /// GitHub token for Copilot API
+    /// GitHub token for Copilot API (auto-loaded from OpenCode if available)
+    #[serde(default)]
     pub token: String,
     /// Model to use (default: gpt-4o)
     pub model: String,
@@ -71,10 +72,34 @@ pub struct CopilotConfig {
 impl Default for CopilotConfig {
     fn default() -> Self {
         Self {
-            token: String::new(), // Must be set in config
+            token: String::new(),
             model: "gpt-4o".to_string(),
             base_url: "https://api.github.com".to_string(),
         }
+    }
+}
+
+impl CopilotConfig {
+    /// Load token from OpenCode's auth.json if available
+    pub fn load_token() -> Option<String> {
+        let path = dirs::data_local_dir()
+            .unwrap_or_else(|| std::path::PathBuf::from("."))
+            .join("opencode")
+            .join("auth.json");
+
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            if let Ok(auth) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(copilot) = auth.get("github-copilot") {
+                    if let Some(token) = copilot.get("access").and_then(|t| t.as_str()) {
+                        return Some(token.to_string());
+                    }
+                    if let Some(token) = copilot.get("refresh").and_then(|t| t.as_str()) {
+                        return Some(token.to_string());
+                    }
+                }
+            }
+        }
+        None
     }
 }
 

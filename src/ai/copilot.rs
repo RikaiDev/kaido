@@ -50,7 +50,15 @@ impl CopilotBackend {
     }
     
     pub fn is_available(&self) -> bool {
-        !self.config.token.is_empty()
+        !self.get_token().is_empty()
+    }
+    
+    fn get_token(&self) -> String {
+        if !self.config.token.is_empty() {
+            self.config.token.clone()
+        } else {
+            CopilotConfig::load_token().unwrap_or_default()
+        }
     }
 }
 
@@ -63,10 +71,14 @@ impl Default for CopilotBackend {
 #[async_trait]
 impl LLMBackend for CopilotBackend {
     async fn infer(&self, prompt: &str) -> Result<LLMResponse> {
-        if !self.is_available() {
-            anyhow::bail!("Copilot token not configured. Add to ~/.kaido/config.toml:\n\
-                [copilot]\n\
-                token = \"your-github-token\"");
+        let token = self.get_token();
+        
+        if token.is_empty() {
+            return Err(anyhow::anyhow!(
+                "Copilot not configured.\n\n\
+                Run: opencode providers login copilot\n\
+                Then use Copilot in Kaido!"
+            ));
         }
         
         let request = CopilotRequest {
@@ -89,7 +101,7 @@ impl LLMBackend for CopilotBackend {
         
         let response = self.client
             .post(&url)
-            .header("Authorization", format!("Bearer {}", self.config.token))
+            .header("Authorization", format!("Bearer {token}"))
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")
             .json(&request)
