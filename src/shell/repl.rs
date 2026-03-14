@@ -175,6 +175,24 @@ impl KaidoREPL {
             logger.log_session_end(&session_id, &final_state)?;
         }
 
+        // Output JSON if in json mode
+        if self.json_mode {
+            let result = serde_json::json!({
+                "task": final_state.task,
+                "status": format!("{:?}", final_state.status),
+                "thinking": final_state.history.iter().map(|s| serde_json::json!({
+                    "step": s.step_number,
+                    "type": format!("{:?}", s.step_type),
+                    "content": s.content,
+                })).collect::<Vec<_>>(),
+                "action": final_state.history.last().map(|s| s.content.clone()),
+                "root_cause": final_state.root_cause,
+                "solution": final_state.solution_plan,
+            });
+            println!("{}", serde_json::to_string(&result)?);
+            return Ok(());
+        }
+
         // Display final summary
         println!("\n\x1b[38;5;250m╭─ summary\x1b[0m");
         println!(
