@@ -18,8 +18,8 @@ pub struct Shell {
 }
 
 impl Shell {
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Result<Self> {
+        Ok(Self {
             running: true,
             learning: LearningTracker::new(),
             parser: CommandParser::new(),
@@ -27,7 +27,7 @@ impl Shell {
             ai: AIProcessor::new(),
             skills: SkillsRegistry::load(),
             plugins: PluginManager::new(),
-        }
+        })
     }
 
     pub async fn run(&mut self) -> Result<()> {
@@ -108,6 +108,6 @@ impl Shell {
 
 impl Default for Shell {
     fn default() -> Self {
-        Self::new()
+        Self::new().expect("Shell::new() should not fail")
     }
 }

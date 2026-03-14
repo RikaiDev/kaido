@@ -1,8 +1,7 @@
 use clap::{Parser, Subcommand};
 use kaido::ai::{GeminiBackend, OllamaBackend};
 use kaido::config::{AIProvider, Config};
-use kaido::shell::repl::KaidoREPL;
-use kaido::shell::KaidoShell;
+use kaido::shell::Shell;
 use kaido::tools::LLMBackend;
 use kaido::Target;
 use std::io::{self, Write};
@@ -117,7 +116,7 @@ async fn main() -> anyhow::Result<()> {
             run_init_learning(non_interactive).await?;
         }
         Some(Commands::Shell) => {
-            let mut shell = KaidoShell::new()?;
+            let mut shell = Shell::new()?;
             shell.run().await?;
         }
         Some(Commands::Update { check }) => {
@@ -141,10 +140,9 @@ async fn main() -> anyhow::Result<()> {
                 return Ok(());
             }
             
-            let mut repl = KaidoREPL::new()?;
-            repl.set_json_mode(cli.json);
-            repl.set_target(Target::parse(&cli.target));
-            repl.run().await?;
+            // Default: start new AI Shell
+            let mut shell = Shell::new()?;
+            shell.run().await?;
         }
     }
 
