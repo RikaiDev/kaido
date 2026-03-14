@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use crate::agent::{AgentLoop, AgentStep, StepType};
 use crate::ai::AIManager;
 use crate::audit::AgentAuditLogger;
+use crate::bin::kaido::Target;
 use crate::config::Config;
 use crate::tools::ToolContext;
 
@@ -17,6 +18,7 @@ pub struct KaidoREPL {
     audit_logger: Option<AgentAuditLogger>,
     config: Config,
     json_mode: bool,
+    target: Target,
 }
 
 impl KaidoREPL {
@@ -48,6 +50,7 @@ impl KaidoREPL {
             audit_logger,
             config,
             json_mode: false,
+            target: Target::Local,
         })
     }
 
@@ -69,6 +72,11 @@ impl KaidoREPL {
     /// Set JSON output mode
     pub fn set_json_mode(&mut self, enabled: bool) {
         self.json_mode = enabled;
+    }
+
+    /// Set target host
+    pub fn set_target(&mut self, target: Target) {
+        self.target = target;
     }
 
     /// Run the REPL loop
