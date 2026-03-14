@@ -19,6 +19,10 @@ const BOLD: &str = "\x1b[1m";
 #[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "Kaido AI - Your AI Ops Coach", long_about = None)]
 struct Cli {
+    /// Output as JSON (for AI agent integration)
+    #[arg(long, short)]
+    json: bool,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -66,6 +70,7 @@ async fn main() -> anyhow::Result<()> {
         }
         None => {
             let mut repl = KaidoREPL::new()?;
+            repl.set_json_mode(cli.json);
             repl.run().await?;
         }
     }
