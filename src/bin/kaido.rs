@@ -34,8 +34,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Start your learning journey - set up AI backends
-    Init {
+    /// Onboard - set up AI backends and configure Kaido
+    Onboard {
         /// Skip interactive prompts and use defaults
         #[arg(long)]
         non_interactive: bool,
@@ -81,7 +81,7 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Some(Commands::Init { non_interactive }) => {
+        Some(Commands::Onboard { non_interactive }) => {
             run_init_learning(non_interactive).await?;
         }
         Some(Commands::Shell) => {
