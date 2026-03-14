@@ -53,3 +53,20 @@ impl AIProcessor {
         input.split_whitespace().count() > 1
     }
 }
+
+#[derive(Debug)]
+pub struct Translation {
+    pub original: String,
+    pub intent: String,
+    pub command: String,
+    pub explanation: String,
+}
+
+impl Translation {
+    pub fn to_display_string(&self) -> String {
+        format!(
+            "→ Intent: {}\n→ Translate: {}\n→ {}",
+            self.intent, self.command, self.explanation
+        )
+    }
+}
