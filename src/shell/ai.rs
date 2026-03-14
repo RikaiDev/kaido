@@ -5,6 +5,26 @@ impl AIProcessor {
         Self
     }
 
+    pub fn explain_error(&self, error: &str) -> String {
+        if error.contains("bind()") && error.contains(":80") {
+            return "Port 80 is already in use. Another service (like Apache) may be running."
+                .to_string();
+        }
+        if error.contains("EADDRINUSE") {
+            return "Address already in use. The port is occupied by another process.".to_string();
+        }
+        if error.contains("Permission denied") {
+            return "Permission denied. You may need sudo for this operation.".to_string();
+        }
+        if error.contains("command not found") {
+            return "Command not found. Check if the command is installed.".to_string();
+        }
+        format!(
+            "Error: {}. Try searching for this error message online.",
+            error
+        )
+    }
+
     pub fn is_natural_language(&self, input: &str) -> bool {
         let known_commands = [
             "ls",

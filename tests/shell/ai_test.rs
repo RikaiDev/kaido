@@ -25,4 +25,14 @@ mod tests {
         assert!(display.contains("Intent:"));
         assert!(display.contains("Translate:"));
     }
+
+    #[test]
+    fn test_error_explanation() {
+        let ai = AIProcessor::new();
+        let error_output = "nginx: [emerg] bind() to 0.0.0.0:80 failed";
+
+        let explanation = ai.explain_error(error_output);
+        assert!(explanation.contains("Port 80"));
+        assert!(explanation.contains("already in use"));
+    }
 }
