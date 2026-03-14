@@ -30,6 +30,19 @@ impl AIProcessor {
             "pip",
             "npm",
             "node",
+            "git",
+            "find",
+            "tar",
+            "curl",
+            "wget",
+            "ssh",
+            "sudo",
+            "python",
+            "python3",
+            "ruby",
+            "go",
+            "make",
+            "cmake",
         ];
 
         let first_word = input.split_whitespace().next().unwrap_or("");

@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod builtins;
 pub mod core;
 pub mod executor;
