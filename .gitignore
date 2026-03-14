@@ -37,3 +37,4 @@ config/production.toml
 # Kaido runtime data
 .kaido/
 */.kaido/
+.worktrees/
