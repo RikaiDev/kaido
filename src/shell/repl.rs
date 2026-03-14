@@ -16,6 +16,7 @@ pub struct KaidoREPL {
     tool_context: ToolContext,
     audit_logger: Option<AgentAuditLogger>,
     config: Config,
+    json_mode: bool,
 }
 
 impl KaidoREPL {
@@ -46,6 +47,7 @@ impl KaidoREPL {
             tool_context,
             audit_logger,
             config,
+            json_mode: false,
         })
     }
 
@@ -62,6 +64,11 @@ impl KaidoREPL {
         logger.clean_old_sessions(90)?;
 
         Ok(logger)
+    }
+
+    /// Set JSON output mode
+    pub fn set_json_mode(&mut self, enabled: bool) {
+        self.json_mode = enabled;
     }
 
     /// Run the REPL loop
