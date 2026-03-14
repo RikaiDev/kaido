@@ -48,6 +48,24 @@ enum Commands {
         #[arg(long)]
         check: bool,
     },
+    /// Configure AI API providers
+    Config {
+        /// Show current configuration
+        #[arg(long)]
+        show: bool,
+        /// Set API key for a provider (e.g., openai, anthropic, google)
+        #[arg(long, value_name = "provider")]
+        set_api_key: Option<String>,
+        /// Set model for a provider
+        #[arg(long, value_name = "provider")]
+        set_model: Option<String>,
+        /// Set custom base URL for OpenAI-compatible APIs
+        #[arg(long, value_name = "url")]
+        set_url: Option<String>,
+        /// Use a specific provider (openai, anthropic, google, ollama)
+        #[arg(long)]
+        provider: Option<String>,
+    },
 }
 
 #[tokio::main]
@@ -72,6 +90,9 @@ async fn main() -> anyhow::Result<()> {
         }
         Some(Commands::Update { check }) => {
             run_update(check).await?;
+        }
+        Some(Commands::Config { show, set_api_key, set_model, set_url, provider }) => {
+            run_config(show, set_api_key, set_model, set_url, provider).await?;
         }
         None => {
             let mut repl = KaidoREPL::new()?;
@@ -969,4 +990,189 @@ fn detect_platform() -> &'static str {
         all(target_os = "macos", target_arch = "aarch64"),
     )))]
     return "unknown";
+}
+
+// ══════════════════════════════════════════════════════════════
+// CONFIG COMMAND
+// ══════════════════════════════════════════════════════════════
+
+/// Run the config command
+async fn run_config(
+    show: bool,
+    set_api_key: Option<String>,
+    set_model: Option<String>,
+    set_url: Option<String>,
+    provider: Option<String>,
+) -> anyhow::Result<()> {
+    let mut config = Config::load().unwrap_or_default();
+
+    // Show current configuration
+    if show {
+        println!("\n{CYAN}━━━ Kaido Configuration ━━━{RESET}\n");
+
+        // Provider
+        println!("{GREEN}Provider:{RESET} {:?}", config.provider);
+
+        // API Keys (masked)
+        println!("\n{GREEN}API Keys:{RESET}");
+        if let Some(ref key) = config.gemini_api_key {
+            if !key.is_empty() {
+                println!("  {YELLOW}google:{RESET} {}", mask_key(key));
+            }
+        }
+        if !config.ai.api_key.is_empty() {
+            println!("  {YELLOW}openai:{RESET} {}", mask_key(&config.ai.api_key));
+        }
+
+        // Models
+        println!("\n{GREEN}Models:{RESET}");
+        println!("  {YELLOW}ollama:{RESET} {}", config.ollama.model);
+        println!("  {YELLOW}openai:{RESET} {}", config.ai.model);
+
+        // Base URLs
+        println!("\n{GREEN}Base URLs:{RESET}");
+        println!("  {YELLOW}ollama:{RESET} {}", config.ollama.base_url);
+        println!("  {YELLOW}openai:{RESET} {}", config.ai.base_url);
+
+        // Environment check
+        println!("\n{GREEN}Environment Variables:{RESET}");
+        if std::env::var("GEMINI_API_KEY").is_ok() {
+            println!("  {GREEN}✓{RESET} GEMINI_API_KEY set");
+        }
+        if std::env::var("OPENAI_API_KEY").is_ok() {
+            println!("  {GREEN}✓{RESET} OPENAI_API_KEY set");
+        }
+        if std::env::var("ANTHROPIC_API_KEY").is_ok() {
+            println!("  {GREEN}✓{RESET} ANTHROPIC_API_KEY set");
+        }
+
+        println!("\n{DIM}Config file: {}{RESET}", Config::get_config_path()?.display());
+
+        // Show available free options for students
+        println!("\n{CYAN}━━━ Free Options for Students ━━━{RESET}\n");
+        println!("{YELLOW}GitHub Copilot Pro:{RESET} (students get free)");
+        println!("  → Use: set --provider openai --set-url https://api.github.com/v1");
+        println!("  → Or: set ANTHROPIC_API_KEY env var\n");
+        println!("{YELLOW}Google AI Studio (free tier):{RESET}");
+        println!("  → Get key: {CYAN}https://aistudio.google.com/app/apikey{RESET}");
+        println!("  → Then: kaido config --set-api-key google\n");
+        println!("{YELLOW}Ollama (local, free forever):{RESET}");
+        println!("  → Install: {CYAN}brew install ollama{RESET}");
+        println!("  → Then: {CYAN}ollama pull llama3.2{RESET}");
+
+        return Ok(());
+    }
+
+    // Set provider
+    if let Some(p) = provider {
+        match p.to_lowercase().as_str() {
+            "openai" => {
+                config.provider = AIProvider::Auto;
+                println!("{GREEN}✓{RESET} Provider set to OpenAI (using AI SDK)");
+            }
+            "anthropic" | "claude" => {
+                config.provider = AIProvider::Auto;
+                println!("{GREEN}✓{RESET} Provider set to Anthropic (via OpenAI-compatible API)");
+            }
+            "google" | "gemini" => {
+                config.provider = AIProvider::Gemini;
+                println!("{GREEN}✓{RESET} Provider set to Google Gemini");
+            }
+            "ollama" => {
+                config.provider = AIProvider::Ollama;
+                println!("{GREEN}✓{RESET} Provider set to Ollama (local)");
+            }
+            _ => {
+                println!("{YELLOW}Unknown provider: {p}{RESET}");
+                println!("Valid options: openai, anthropic, google, ollama");
+            }
+        }
+        config.save()?;
+        return Ok(());
+    }
+
+    // Set API key
+    if let Some(provider_key) = set_api_key {
+        let parts: Vec<&str> = provider_key.splitn(2, '=').collect();
+        if parts.len() != 2 {
+            println!("{YELLOW}Usage: --set-api-key provider=KEY{RESET}");
+            println!("Example: kaido config --set-api-key google=YOUR_API_KEY");
+            return Ok(());
+        }
+        let (prov, key) = (parts[0], parts[1]);
+
+        match prov.to_lowercase().as_str() {
+            "google" | "gemini" => {
+                config.gemini_api_key = Some(key.to_string());
+                println!("{GREEN}✓{RESET} Google API key set");
+            }
+            "openai" => {
+                config.ai.api_key = key.to_string();
+                println!("{GREEN}✓{RESET} OpenAI API key set");
+            }
+            "anthropic" | "claude" => {
+                config.ai.api_key = key.to_string();
+                config.ai.base_url = "https://api.anthropic.com/v1".to_string();
+                println!("{GREEN}✓{RESET} Anthropic API key set (using OpenAI-compatible endpoint)");
+            }
+            _ => {
+                println!("{YELLOW}Unknown provider: {prov}{RESET}");
+                println!("Valid: google, openai, anthropic");
+            }
+        }
+        config.save()?;
+        return Ok(());
+    }
+
+    // Set model
+    if let Some(provider_model) = set_model {
+        let parts: Vec<&str> = provider_model.splitn(2, '=').collect();
+        if parts.len() != 2 {
+            println!("{YELLOW}Usage: --set-model provider=MODEL{RESET}");
+            return Ok(());
+        }
+        let (prov, model) = (parts[0], parts[1]);
+
+        match prov.to_lowercase().as_str() {
+            "openai" | "anthropic" => {
+                config.ai.model = model.to_string();
+                println!("{GREEN}✓{RESET} Model set to {model}");
+            }
+            "ollama" => {
+                config.ollama.model = model.to_string();
+                println!("{GREEN}✓{RESET} Ollama model set to {model}");
+            }
+            _ => {}
+        }
+        config.save()?;
+        return Ok(());
+    }
+
+    // Set URL
+    if let Some(url) = set_url {
+        config.ai.base_url = url.clone();
+        println!("{GREEN}✓{RESET} Base URL set to {url}");
+        config.save()?;
+        return Ok(());
+    }
+
+    // No options, show help
+    println!("{CYAN}━━━ Kaido Config Help ━━━{RESET}\n");
+    println!("{GREEN}Usage:{RESET}");
+    println!("  kaido config --show                    # Show current config");
+    println!("  kaido config --provider openai        # Set provider");
+    println!("  kaido config --set-api-key google=KEY # Set API key");
+    println!("  kaido config --set-model openai=gpt-4 # Set model");
+    println!("  kaido config --set-url https://...   # Set custom endpoint\n");
+
+    Ok(())
+}
+
+/// Mask API key for display
+fn mask_key(key: &str) -> String {
+    if key.len() <= 8 {
+        "****".to_string()
+    } else {
+        format!("{}...{}", &key[..4], &key[key.len()-4..])
+    }
 }
