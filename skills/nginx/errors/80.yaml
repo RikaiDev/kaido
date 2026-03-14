@@ -1,0 +1,10 @@
+pattern: "bind.*80.*failed"
+causes:
+  - Port 80 already in use
+  - Apache running
+diagnosis:
+  - sudo lsof -i :80
+  - systemctl status apache2
+teaches:
+  - "Port conflicts"
+  - "Two services can't share same port"

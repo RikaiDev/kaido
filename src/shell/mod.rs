@@ -10,6 +10,7 @@ pub mod prompt;
 pub mod pty;
 pub mod repl;
 pub mod signals;
+pub mod skills;
 
 pub use builtins::{parse_builtin, Builtin, BuiltinResult, ShellEnvironment};
 pub use core::Shell;

@@ -1,0 +1,11 @@
+pattern: "502 Bad Gateway"
+causes:
+  - Backend service not running
+  - Backend timeout
+  - Network issue
+diagnosis:
+  - systemctl status php-fpm
+  - tail /var/log/nginx/error.log
+teaches:
+  - "502 = upstream failed"
+  - "Check backend first"
