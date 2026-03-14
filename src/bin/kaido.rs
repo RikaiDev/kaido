@@ -19,31 +19,11 @@ fn print_welcome_first_run() {
     println!();
     println!("{CYAN}╭───────────────────────────────────────────────────────────╮{RESET}");
     println!("{CYAN}│{RESET}                                                           {CYAN}│{RESET}");
-    println!("{CYAN}│{RESET}   {BOLD}Welcome to Kaido!{RESET}                                       {CYAN}│{RESET}");
+    println!("{CYAN}│{RESET}   {BOLD}Welcome to Kaido!{RESET} - AI Shell                 {CYAN}│{RESET}");
     println!("{CYAN}│{RESET}                                                           {CYAN}│{RESET}");
-    println!("{CYAN}│{RESET}   Your AI Ops Coach - Learn DevOps by doing            {CYAN}│{RESET}");
+    println!("{CYAN}│{RESET}   Run {CYAN}kaido onboard{RESET} to set up AI              {CYAN}│{RESET}");
     println!("{CYAN}│{RESET}                                                           {CYAN}│{RESET}");
     println!("{CYAN}╰───────────────────────────────────────────────────────────╯{RESET}\n");
-    
-    println!("{GREEN}┌─ GETTING STARTED ────────────────────────────────────────┐{RESET}");
-    println!("{GREEN}│{RESET}                                                           {GREEN}│{RESET}");
-    println!("{GREEN}│{RESET}  1. {BOLD}Setup AI:{RESET}                                               {GREEN}│{RESET}");
-    println!("{GREEN}│{RESET}        {CYAN}kaido onboard{RESET}                                    {GREEN}│{RESET}");
-    println!("{GREEN}│{RESET}                                                           {GREEN}│{RESET}");
-    println!("{GREEN}│{RESET}  2. {BOLD}Configure:{RESET}                                             {GREEN}│{RESET}");
-    println!("{GREEN}│{RESET}        {CYAN}kaido config --show{RESET}                              {GREEN}│{RESET}");
-    println!("{GREEN}│{RESET}                                                           {GREEN}│{RESET}");
-    println!("{GREEN}│{RESET}  3. {BOLD}Start using:{RESET}                                         {GREEN}│{RESET}");
-    println!("{GREEN}│{RESET}        {CYAN}kaido{RESET}                                            {GREEN}│{RESET}");
-    println!("{GREEN}│{RESET}                                                           {GREEN}│{RESET}");
-    println!("{GREEN}│{RESET}  Example questions:                                    {GREEN}│{RESET}");
-    println!("{GREEN}│{RESET}    • \"check nginx status\"                              {GREEN}│{RESET}");
-    println!("{GREEN}│{RESET}    • \"docker container not starting\"                {GREEN}│{RESET}");
-    println!("{GREEN}│{RESET}    • \"show disk usage\"                                {GREEN}│{RESET}");
-    println!("{GREEN}│{RESET}                                                           {GREEN}│{RESET}");
-    println!("{GREEN}└───────────────────────────────────────────────────────────┘{RESET}\n");
-    
-    println!("{DIM}For more info: {CYAN}https://github.com/RikaiDev/kaido{RESET}\n");
 }
 
 #[derive(Parser)]

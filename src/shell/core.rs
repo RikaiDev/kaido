@@ -31,11 +31,8 @@ impl Shell {
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        println!("Welcome to Kaido AI Shell!");
-        println!("Type commands or natural language. /progress to see learning progress.\n");
-
         while self.running {
-            print!("kaido> ");
+            print!("❯ ");
             io::stdout().flush()?;
 
             let mut input = String::new();
