@@ -3,7 +3,6 @@ use kaido::ai::{GeminiBackend, OllamaBackend};
 use kaido::config::{AIProvider, Config};
 use kaido::shell::Shell;
 use kaido::tools::LLMBackend;
-use kaido::Target;
 use std::io::{self, Write};
 
 // ANSI color codes
@@ -1048,6 +1047,7 @@ async fn run_config(
         println!("\n{GREEN}Models:{RESET}");
         println!("  {YELLOW}ollama:{RESET} {}", config.ollama.model);
         println!("  {YELLOW}openai:{RESET} {}", config.ai.model);
+        println!("  {YELLOW}copilot:{RESET} {}", config.copilot.model);
 
         // Base URLs
         println!("\n{GREEN}Base URLs:{RESET}");
@@ -1102,9 +1102,14 @@ async fn run_config(
                 config.provider = AIProvider::Ollama;
                 println!("{GREEN}✓{RESET} Provider set to Ollama (local)");
             }
+            "copilot" | "github" => {
+                config.provider = AIProvider::Copilot;
+                println!("{GREEN}✓{RESET} Provider set to GitHub Copilot");
+                println!("{DIM}Note: Run 'opencode providers login copilot' first!{RESET}");
+            }
             _ => {
                 println!("{YELLOW}Unknown provider: {p}{RESET}");
-                println!("Valid options: openai, anthropic, google, ollama");
+                println!("Valid options: openai, anthropic, google, ollama, copilot");
             }
         }
         config.save()?;
@@ -1162,7 +1167,15 @@ async fn run_config(
                 config.ollama.model = model.to_string();
                 println!("{GREEN}✓{RESET} Ollama model set to {model}");
             }
-            _ => {}
+            "copilot" => {
+                config.copilot.model = model.to_string();
+                println!("{GREEN}✓{RESET} Copilot model set to {model}");
+                println!("{DIM}Available: gpt-4o, gpt-5.1, claude-opus-4.6, gemini-2.5-pro{RESET}");
+            }
+            _ => {
+                println!("{YELLOW}Unknown provider: {prov}{RESET}");
+                println!("Valid: openai, ollama, copilot");
+            }
         }
         config.save()?;
         return Ok(());

@@ -11,6 +11,7 @@ use std::io::{self, Write};
 const CYAN: &str = "\x1b[38;5;87m";
 const GREEN: &str = "\x1b[38;5;154m";
 const YELLOW: &str = "\x1b[38;5;227m";
+#[allow(dead_code)]
 const DIM: &str = "\x1b[38;5;245m";
 const RESET: &str = "\x1b[0m";
 
@@ -21,6 +22,7 @@ pub struct Shell {
     executor: CommandExecutor,
     ai: AIProcessor,
     skills: SkillsRegistry,
+    #[allow(dead_code)]
     plugins: PluginManager,
     theme: Theme,
 }

@@ -1,4 +1,4 @@
-use kaido::shell::parser::{CommandParser, ParsedCommand};
+use kaido::shell::parser::CommandParser;
 
 #[test]
 fn test_parse_simple_command() {

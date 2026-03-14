@@ -64,6 +64,7 @@ pub struct CopilotConfig {
     #[serde(default)]
     pub token: String,
     /// Model to use (default: gpt-4o)
+    /// Common: gpt-4o, gpt-5.1, gpt-5-mini, claude-opus-4.6, claude-sonnet-4.6, gemini-2.5-pro
     #[serde(default = "default_copilot_model")]
     pub model: String,
     /// API base URL (for GitHub Enterprise)
@@ -73,28 +74,6 @@ pub struct CopilotConfig {
 fn default_copilot_model() -> String {
     "gpt-4o".to_string()
 }
-
-/// Available Copilot models
-pub static COPILOT_MODELS: &[&str] = &[
-    // OpenAI
-    "gpt-4o",
-    "gpt-4.1",
-    "gpt-5.1",
-    "gpt-5.1-codex",
-    "gpt-5.2",
-    "gpt-5.2-codex",
-    "gpt-5.3-codex",
-    "gpt-5.4",
-    "gpt-5-mini",
-    // Anthropic
-    "claude-haiku-4.5",
-    "claude-sonnet-4.6",
-    "claude-opus-4.6",
-    // Google
-    "gemini-2.5-pro",
-    "gemini-3-pro",
-    "gemini-3-flash",
-];
 
 impl Default for CopilotConfig {
     fn default() -> Self {
