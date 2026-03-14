@@ -57,6 +57,27 @@ impl Default for OpenAIConfig {
     }
 }
 
+/// GitHub Copilot configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CopilotConfig {
+    /// GitHub token for Copilot API
+    pub token: String,
+    /// Model to use (default: gpt-4o)
+    pub model: String,
+    /// API base URL (for GitHub Enterprise)
+    pub base_url: String,
+}
+
+impl Default for CopilotConfig {
+    fn default() -> Self {
+        Self {
+            token: String::new(), // Must be set in config
+            model: "gpt-4o".to_string(),
+            base_url: "https://api.github.com".to_string(),
+        }
+    }
+}
+
 /// Audit log configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditConfig {
@@ -116,13 +137,16 @@ impl Default for DisplayConfig {
 /// Main configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
-    /// AI provider selection: auto, gemini, or ollama
+    /// AI provider selection: auto, gemini, ollama, or copilot
     #[serde(default)]
     pub provider: AIProvider,
     pub ai: OpenAIConfig,
     /// Ollama configuration for local model inference
     #[serde(default)]
     pub ollama: OllamaConfig,
+    /// GitHub Copilot configuration
+    #[serde(default)]
+    pub copilot: CopilotConfig,
     pub audit: AuditConfig,
     pub safety: SafetyConfig,
     pub display: DisplayConfig,

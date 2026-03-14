@@ -29,7 +29,7 @@ impl AIManager {
         Self {
             gemini: GeminiBackend::new(),
             ollama: OllamaBackend::with_config(config.ollama.clone()),
-            copilot: CopilotBackend::new(),
+            copilot: CopilotBackend::with_config(config.copilot.clone()),
             provider: config.provider.clone(),
         }
     }

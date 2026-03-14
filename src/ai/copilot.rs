@@ -1,3 +1,4 @@
+use crate::config::CopilotConfig;
 use crate::tools::{LLMBackend, LLMResponse};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
@@ -6,9 +7,7 @@ use serde::{Deserialize, Serialize};
 
 pub struct CopilotBackend {
     client: Client,
-    api_key: String,
-    model: String,
-    base_url: String,
+    config: CopilotConfig,
 }
 
 #[derive(Serialize)]
@@ -37,20 +36,21 @@ struct Choice {
 
 impl CopilotBackend {
     pub fn new() -> Self {
-        let api_key = std::env::var("GITHUB_COPILOT_TOKEN")
-            .or_else(|_| std::env::var("COPILOT_TOKEN"))
-            .unwrap_or_default();
-        
         Self {
             client: Client::new(),
-            api_key,
-            model: "gpt-4o".to_string(),
-            base_url: "https://api.github.com".to_string(),
+            config: CopilotConfig::default(),
+        }
+    }
+    
+    pub fn with_config(config: CopilotConfig) -> Self {
+        Self {
+            client: Client::new(),
+            config,
         }
     }
     
     pub fn is_available(&self) -> bool {
-        !self.api_key.is_empty()
+        !self.config.token.is_empty()
     }
 }
 
@@ -64,11 +64,13 @@ impl Default for CopilotBackend {
 impl LLMBackend for CopilotBackend {
     async fn infer(&self, prompt: &str) -> Result<LLMResponse> {
         if !self.is_available() {
-            anyhow::bail!("Copilot token not set. Set GITHUB_COPILOT_TOKEN environment variable.");
+            anyhow::bail!("Copilot token not configured. Add to ~/.kaido/config.toml:\n\
+                [copilot]\n\
+                token = \"your-github-token\"");
         }
         
         let request = CopilotRequest {
-            model: self.model.clone(),
+            model: self.config.model.clone(),
             messages: vec![
                 Message {
                     role: "system".to_string(),
@@ -83,11 +85,11 @@ impl LLMBackend for CopilotBackend {
             max_tokens: 256,
         };
         
-        let url = format!("{}/v1/chat/completions", self.base_url);
+        let url = format!("{}/v1/chat/completions", self.config.base_url);
         
         let response = self.client
             .post(&url)
-            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Authorization", format!("Bearer {}", self.config.token))
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")
             .json(&request)
