@@ -4,6 +4,7 @@ use kaido::config::{AIProvider, Config};
 use kaido::shell::repl::KaidoREPL;
 use kaido::shell::KaidoShell;
 use kaido::tools::LLMBackend;
+use serde::{Deserialize, Serialize};
 use std::io::{self, Write};
 
 // ANSI color codes
@@ -14,6 +15,37 @@ const DIM: &str = "\x1b[38;5;245m";
 const RESET: &str = "\x1b[0m";
 const BOLD: &str = "\x1b[1m";
 
+/// Target host for operation
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub enum Target {
+    #[default]
+    Local,
+    Remote {
+        host: String,
+        user: Option<String>,
+    },
+}
+
+impl Target {
+    /// Parse target from string (user@host format)
+    pub fn parse(s: &str) -> Self {
+        if s.is_empty() {
+            return Target::Local;
+        }
+        if let Some((user, host)) = s.split_once('@') {
+            Target::Remote {
+                user: Some(user.to_string()),
+                host: host.to_string(),
+            }
+        } else {
+            Target::Remote {
+                user: None,
+                host: s.to_string(),
+            }
+        }
+    }
+}
+
 #[derive(Parser)]
 #[command(name = "kaido")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
@@ -22,6 +54,10 @@ struct Cli {
     /// Output as JSON (for AI agent integration)
     #[arg(long, short)]
     json: bool,
+
+    /// Target host (user@host for remote, empty for local)
+    #[arg(long, value_name = "user@host", default_value = "")]
+    target: String,
 
     #[command(subcommand)]
     command: Option<Commands>,
@@ -71,6 +107,7 @@ async fn main() -> anyhow::Result<()> {
         None => {
             let mut repl = KaidoREPL::new()?;
             repl.set_json_mode(cli.json);
+            repl.set_target(Target::parse(&cli.target));
             repl.run().await?;
         }
     }
