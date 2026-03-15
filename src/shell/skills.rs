@@ -45,4 +45,8 @@ impl SkillsRegistry {
         }
         None
     }
+
+    pub fn match_error_cloned(&self, error: &str) -> Option<Skill> {
+        self.match_error(error).cloned()
+    }
 }

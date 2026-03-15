@@ -24,7 +24,7 @@ fn print_welcome_first_run() {
 #[derive(Parser)]
 #[command(name = "kaido")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
-#[command(about = "Kaido AI - Your AI Ops Coach", long_about = None)]
+#[command(about = "Kaido AI - Your AI mentor in the terminal", long_about = None)]
 struct Cli {
     /// Output as JSON (for AI agent integration)
     #[arg(long, short)]
@@ -46,8 +46,6 @@ enum Commands {
         #[arg(long)]
         non_interactive: bool,
     },
-    /// Start the mentor shell (new shell wrapper mode)
-    Shell,
     /// Check for updates and upgrade to the latest version
     Update {
         /// Just check for updates without installing
@@ -90,10 +88,6 @@ async fn main() -> anyhow::Result<()> {
         Some(Commands::Onboard { non_interactive }) => {
             run_init_learning(non_interactive).await?;
         }
-        Some(Commands::Shell) => {
-            let mut shell = Shell::new()?;
-            shell.run().await?;
-        }
         Some(Commands::Update { check }) => {
             run_update(check).await?;
         }
@@ -115,9 +109,9 @@ async fn main() -> anyhow::Result<()> {
                 return Ok(());
             }
             
-            // Default: start new AI Shell
+            // Default: start new AI Shell with TUI mode (for AI Coach side panel)
             let mut shell = Shell::new()?;
-            shell.run().await?;
+            shell.run_tui().await?;
         }
     }
 

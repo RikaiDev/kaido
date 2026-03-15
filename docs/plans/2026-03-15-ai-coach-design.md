@@ -51,11 +51,11 @@ Real-time AI coaching sidebar that watches user actions (terminal/vim) and provi
 
 ### A. Terminal Split Mode (Priority: HIGH)
 
-Simple terminal side panel running alongside main shell.
+TUI mode is the default. Kaido runs with a side panel showing AI Coach.
 
 ```
 ┌─────────────────────────────────────┐
-│ $ kaido coach --side               │
+│ $ kaido                            │
 │                                      │
 │ ┌──────────┬────────────────────┐  │
 │ │ Main     │  Kaido Side Panel  │  │
@@ -73,9 +73,8 @@ Simple terminal side panel running alongside main shell.
 ```
 
 **Implementation:**
-- PTY pair: main terminal + side panel
-- TMUX-like layout using ratatui
-- Event: capture from main PTY or listen to shell events
+- ratatui TUI with side panel (current)
+- Event: capture from shell commands, show on error
 
 ### B. Vim Plugin (Priority: MEDIUM)
 

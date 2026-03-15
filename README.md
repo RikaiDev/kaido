@@ -1,6 +1,6 @@
-# Kaido - Your AI Ops Coach
+# Kaido - Your AI Mentor in the Terminal
 
-Learn infrastructure operations through guided AI diagnosis. Not just answers — understanding.
+Learn why, not what.
 
 ```
 You:   "nginx won't start, says port 80 already in use"
@@ -27,9 +27,9 @@ Kaido: Let me help you understand what's happening...
 
 ## Why Kaido?
 
-**The Problem**: Ops expertise takes years to build. AI tools that "just solve problems" don't help you grow.
+**The Problem**: Most DevOps learning is copy-paste. You run commands from tutorials without understanding why they work — until something breaks and you're lost.
 
-**Our Approach**: Kaido shows its reasoning, explains every command, and teaches you *why* — so you become the expert.
+**Our Approach**: Kaido is your AI mentor in the terminal. When errors happen, it explains *why* — so you learn the underlying concepts, not just memorize commands.
 
 | Traditional AI | Kaido |
 |----------------|-------|
@@ -39,10 +39,10 @@ Kaido: Let me help you understand what's happening...
 
 ## Who Is This For?
 
-- **CS Students**: First time using a terminal? Start here.
-- **Career Changers**: Transitioning to DevOps? Learn the fundamentals.
-- **Frontend Developers**: Want to understand the backend? We'll guide you.
-- **Junior SREs**: Building real-world debugging skills.
+- **Terminal Beginners**: First time using the command line? Kaido explains everything.
+- **DevOps Learners**: Escape "tutorial hell" by learning why commands work.
+- **Career Changers**: Build real understanding, not just command memorization.
+- **Anyone afraid to break things**: Safe learning with AI guidance.
 
 ## Quick Start
 
@@ -60,7 +60,7 @@ cargo install --git https://github.com/RikaiDev/kaido
 
 **Initialize**
 ```bash
-kaido init
+kaido onboard
 ```
 
 ### Upgrading
@@ -81,15 +81,13 @@ curl -fsSL https://raw.githubusercontent.com/RikaiDev/kaido/main/install.sh | ba
 kaido
 ```
 
-Then just describe your problem in plain language:
+Kaido starts in TUI mode with an AI Coach side panel. When commands fail, the panel automatically shows:
+- **Diagnosis**: What went wrong
+- **Explanation**: Why it happened
+- **Best Practice**: How to avoid it
+- **Commands**: Diagnostic commands to run
 
-```
-> nginx returns 404 for /api endpoint
-> docker containers can't talk to each other
-> pod keeps crashing in kubernetes
-```
-
-Kaido will diagnose step-by-step, explaining each action along the way.
+You can also run vim, tmux, or any terminal program inside Kaido — they'll all benefit from AI Coach diagnostics.
 
 ## Features
 
@@ -150,7 +148,7 @@ SOLUTION  → Found syntax error on line 42
 Run the interactive setup wizard:
 
 ```bash
-kaido init
+kaido onboard
 ```
 
 This teaches you about Cloud vs Local AI while configuring:
@@ -171,7 +169,7 @@ ollama pull llama3.2       # download a model
 
 **Option 3: Both (Recommended)**
 - Gemini for speed, Ollama as private fallback
-- `kaido init` auto-detects and configures both
+- `kaido onboard` auto-detects and configures both
 
 Config file: `~/.kaido/config.toml`
 
@@ -239,6 +237,9 @@ See our [GitHub Issues](https://github.com/RikaiDev/kaido/issues) for planned fe
 - [x] Adaptive mentoring based on skill level
 - [x] AI-native shell with LLM-powered explanations
 - [x] Self-update command (`kaido update`)
+- [x] TUI mode with AI Coach side panel (default)
+- [ ] Vim integration (run vim inside Kaido)
+- [ ] LSP server for diagnostics
 
 ## License
 

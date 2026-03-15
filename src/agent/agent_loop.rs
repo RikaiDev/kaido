@@ -191,15 +191,11 @@ pub struct AgentLoop {
     /// Current state
     state: AgentState,
 
-    /// Tool context for execution (reserved for future use)
-    #[allow(dead_code)]
-    context: ToolContext,
-
     /// Tool registry for executing commands
     tool_registry: crate::tools::ToolRegistry,
 
     /// Callback for displaying progress (optional)
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity)]
     progress_callback: Option<Box<dyn Fn(&AgentStep) + Send>>,
 
     /// Enable explain mode for educational command breakdowns
@@ -209,9 +205,9 @@ pub struct AgentLoop {
 impl AgentLoop {
     /// Create new agent loop for a task
     pub fn new(task: String, context: ToolContext) -> Self {
+        let _ = context; // Reserved for future use - suppress unused warning
         Self {
             state: AgentState::new(task),
-            context,
             tool_registry: crate::tools::ToolRegistry::new(),
             progress_callback: None,
             explain_mode: true, // Default ON for learning

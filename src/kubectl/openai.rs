@@ -2,8 +2,6 @@
 // Based on contracts/openai-api-contract.md
 // NOTE: Currently not used - Gemini API is used instead
 
-#![allow(dead_code)]
-
 use crate::config::OpenAIConfig;
 use crate::kubectl::{KubectlContext, TranslationResult};
 use serde::{Deserialize, Serialize};
