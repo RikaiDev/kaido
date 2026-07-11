@@ -1,3 +1,8 @@
+<!-- rikai-logo -->
+<p align="center">
+  <img src=".github/assets/logo.svg" alt="kaido" width="96" height="96">
+</p>
+
 # Kaido - Your AI Mentor in the Terminal
 
 Learn why, not what.
